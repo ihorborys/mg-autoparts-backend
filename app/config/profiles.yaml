@@ -1,0 +1,88 @@
+# ============================================================
+#  PROFILES CONFIG (Maxgear)
+#  Визначає множники, формат, валюту та структуру зберігання у R2.
+#  Тепер використовується ієрархія: {factor}/{supplier}/{file}
+# ============================================================
+
+common:
+  rounding:
+    EUR: 2      # два знаки після коми
+    UAH: 0      # цілі гривні
+
+profiles:
+  # ----------------- 1. NETTO (EUR) -----------------
+  - name: netto_xlsx
+    factor: 1.00
+    currency_out: EUR
+    format: xlsx
+    r2_prefix: "netto/{supplier}/"
+    columns:
+      - { from: code,     header: "code" }
+      - { from: unicode,  header: "unicode" }
+      - { from: brand,    header: "brand" }
+      - { from: name,     header: "name" }
+      - { from: stock,    header: "stock" }
+      - { from: price,    header: "price_eur" }
+
+  # ----------------- 2. 1.23 (EUR) -----------------
+  - name: x1_23_xlsx
+    factor: 1.23
+    currency_out: EUR
+    format: xlsx
+    r2_prefix: "1_23/{supplier}/"
+    columns:
+      - { from: code,     header: "code" }
+      - { from: unicode,  header: "unicode" }
+      - { from: brand,    header: "brand" }
+      - { from: name,     header: "name" }
+      - { from: stock,    header: "stock" }
+      - { from: price,    header: "price_eur" }
+
+  # ----------------- 3. 1.27 (EUR) -----------------
+  - name: x1_27_xlsx
+    factor: 1.27
+    currency_out: EUR
+    format: xlsx
+    r2_prefix: "1_27/{supplier}/"
+    columns:
+      - { from: code,     header: "code" }
+      - { from: unicode,  header: "unicode" }
+      - { from: brand,    header: "brand" }
+      - { from: name,     header: "name" }
+      - { from: stock,    header: "stock" }
+      - { from: price,    header: "price_eur" }
+
+  # ----------------- 4. EXIST 1.33 (UAH) -----------------
+  - name: exist_1_33_xlsx
+    factor: 1.33
+    currency_out: UAH
+    format: xlsx
+    r2_prefix: "1_33/exist/{supplier}/"
+    rate_policy: nbu_plus        # курс НБУ + надбавка
+    rate_params:
+      add_uah: 1                 # +1 грн до курсу НБУ
+      min_rate: 49               # нижче не опускатись
+      fallback: { policy: manual_fixed, value: 50 }  # якщо API недоступне
+    columns:
+      - { from: brand,  header: "brand" }
+      - { from: code,   header: "code" }
+      - { from: stock,  header: "stock" }
+      - { from: price,  header: "price_uah" }
+
+  # ----------------- 5. SITE 1.33 (EUR, CSV) -----------------
+  - name: site_1_33_csv
+    factor: 1.33
+    currency_out: EUR
+    format: csv
+    r2_prefix: "1_33/site/{supplier}/"
+    csv:
+      delimiter: ";"
+      header: true
+    columns:
+      - { from: supplier_id, header: "supplier_id" }
+      - { from: code,        header: "code" }
+      - { from: unicode,     header: "unicode" }
+      - { from: brand,       header: "brand" }
+      - { from: name,        header: "name" }
+      - { from: stock,       header: "stock" }
+      - { from: price,       header: "price_eur" }

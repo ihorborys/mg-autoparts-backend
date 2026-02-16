@@ -1,0 +1,87 @@
+# ============================================================
+# SUPPLIERS CONFIG
+# Кожен постачальник описується блоком з мапінгом колонок.
+# ============================================================
+
+AUTOPARTNER:
+  supplier_id: 1
+  raw_layout:
+    columns:
+      code: 0         # Артикул (в обох файлах у стовпці 0)
+      brand: 3        # Бренд (у файлі цін - стовпець 3)
+      name: 1         # Назва (у файлі цін - стовпець 1)
+      price: 5        # Ціна (у файлі цін - стовпець 5)
+      stock: 1        # Залишок (у файлі залишків - стовпець 1)
+    stock_index: 1    # Вказуємо, де дивитися кількість для перевірки > 0
+    gt5_to: 10
+  preprocess:
+    skip_rows: 0      # Заголовків немає, починаємо з першого рядка
+  normalize:
+    mode: "csv"
+
+
+
+AP_GDANSK:
+  supplier_id: 2
+
+  # ----------------- Формат сирого CSV -----------------
+  raw_layout:
+    columns:
+      code: 0         # SYMBOL
+      unicode: 0      # дублюємо code
+      brand: 1        # KLIENTA
+      name: 1         # дублюємо brand
+      stock: 3        # STAN
+      price: 2        # CENA
+    stock_index: 3
+    stock_header_token: "STAN"
+    gt5_to: 10
+
+  # ----------------- Підказки читання CSV -----------------
+  csv_hint:
+    encoding: "utf-8"
+    delimiter: ";"
+
+  # ----------------- Попередня обробка -----------------
+  preprocess:
+    skip_rows: 1        # пропускаємо перший рядок із шапкою
+
+  # ----------------- Нормалізація даних -----------------
+  normalize:
+    replace_gt_sign: true     # замінювати "> 5" на gt5_to
+    trim_spaces: true         # обрізати пробіли
+    replace_commas: true      # замінювати коми у цінах на крапки
+
+  # ----------------- Примітки -----------------
+  notes: >
+    У постачальника AP_GDANSK стовпці:
+    SYMBOL; CENA; KLIENTA; STAN.
+    code = unicode, brand = name.
+    STAN = stock, CENA = price.
+    Перший рядок — заголовок, пропускається.
+
+
+
+MOTOROL:
+  supplier_id: 3
+  raw_layout:
+    columns:
+      code: 0
+      unicode: 1
+      brand: 3
+      name: 2
+      stock: 4
+      price: 5
+    stock_index: 4
+    stock_header_token: "stan"
+    gt5_to: 10
+  csv_hint:
+    encoding: "utf-8"
+    delimiter: ";"
+  preprocess:
+    skip_rows: 0
+  normalize:
+    mode: "csv"            # <-- ВАЖЛИВО: нічого не різати по пробілах
+    replace_gt_sign: true  # '>5' -> 10
+
+
