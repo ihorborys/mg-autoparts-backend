@@ -33,9 +33,31 @@ TMP_DIR = TEMP_DIR
 STATE_DIR = TMP_DIR / "state"
 STATE_FILE = STATE_DIR / "gmail_puller_state.json"
 
+# BACKEND_DIR = Path(__file__).resolve().parents[2]
+# CREDENTIALS_PATH = BACKEND_DIR / "app" / "config" /"credentials.json"
+# TOKEN_PATH = BACKEND_DIR / "app" / "config" /"token.json"
+
+# Визначаємо корінь проекту
 BACKEND_DIR = Path(__file__).resolve().parents[2]
-CREDENTIALS_PATH = BACKEND_DIR / "app" / "config" /"credentials.json"
-TOKEN_PATH = BACKEND_DIR / "app" / "config" /"token.json"
+
+
+def get_secret_path(filename: str) -> Path:
+    """Шукає файл спочатку в app/config/, а потім у корені (для Render)"""
+    # Шлях як у вас на комп'ютері
+    local_path = BACKEND_DIR / "app" / "config" / filename
+    if local_path.exists():
+        return local_path
+
+    # Шлях як на Render (якщо файл додано через Secret Files без вказання папок)
+    render_path = BACKEND_DIR / filename
+    return render_path
+
+
+CREDENTIALS_PATH = get_secret_path("credentials.json")
+TOKEN_PATH = get_secret_path("token.json")
+
+print(f"DEBUG: Використовую credentials за шляхом: {CREDENTIALS_PATH}")
+print(f"DEBUG: Використовую token за шляхом: {TOKEN_PATH}")
 
 load_dotenv(BACKEND_DIR / ".env")
 
