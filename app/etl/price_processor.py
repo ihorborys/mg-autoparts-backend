@@ -445,28 +445,83 @@ def process_one_price(
         df_std, price_final, columns_cfg=columns, supplier_id=supplier_id
     )
 
+    # # 4) ЗАПИС У POSTGRESQL (тільки для сайтів)
+    # if "/site/" in r2_prefix and supplier_id is not None:
+    #     try:
+    #         print(f"[INFO] DB Trigger: Updating site prices for ID {supplier_id}...")
+    #         db_url = "postgresql+psycopg2://postgres:123456789@localhost:5432/postgres"
+    #         engine = create_engine(db_url)
+    #
+    #         # КРОК А: Очищення старих даних саме цього постачальника
+    #         with engine.connect() as conn:
+    #             conn.execute(
+    #                 text("DELETE FROM product_catalog WHERE supplier_id = :sid"),
+    #                 {"sid": supplier_id}
+    #             )
+    #             conn.commit()
+    #             print(f"[INFO] DB: Old records for ID {supplier_id} deleted.")
+    #
+    #         # КРОК Б: Запис нових даних
+    #         # Видаляємо символ NUL та пишемо частинами для швидкості
+    #         out_df = out_df.replace('\x00', '', regex=True)
+    #         out_df.to_sql('product_catalog', con=engine, if_exists='append', index=False, chunksize=10000)
+    #
+    #         print(f"[INFO] PostgreSQL: SUCCESS! Site prices updated.")
+    #     except Exception as e:
+    #         print(f"[ERROR] Database save failed: {e}")
+
     # 4) ЗАПИС У POSTGRESQL (тільки для сайтів)
     if "/site/" in r2_prefix and supplier_id is not None:
         try:
             print(f"[INFO] DB Trigger: Updating site prices for ID {supplier_id}...")
-            db_url = "postgresql+psycopg2://postgres:123456789@localhost:5432/postgres"
-            engine = create_engine(db_url)
 
-            # КРОК А: Очищення старих даних саме цього постачальника
-            with engine.connect() as conn:
+            # Зчитуємо URL (переконайся, що в .env він від Supabase!)
+            raw_url = os.getenv("DATABASE_URL")
+            if raw_url and raw_url.startswith("postgresql://"):
+                db_url = raw_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+            else:
+                db_url = raw_url or "postgresql+psycopg2://postgres:123456789@localhost:5432/postgres"
+
+            engine = create_engine(db_url, pool_pre_ping=True)
+
+            # Використовуємо .begin() для автоматичного збереження (COMMIT)
+            with engine.begin() as conn:
+                # --- АВТОМАТИЧНЕ СТВОРЕННЯ ТАБЛИЦІ (якщо ти нічого не створював) ---
+                conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS product_catalog (
+                            id SERIAL PRIMARY KEY,
+                            supplier_id INT,
+                            code VARCHAR(255),
+                            unicode VARCHAR(255),
+                            brand VARCHAR(255),
+                            name TEXT,
+                            stock INT,
+                            price_eur DECIMAL(10, 2)
+                        );
+                    """))
+                print("[INFO] DB: Table check/creation DONE.")
+
+                # КРОК А: Очищення старих даних цього постачальника
                 conn.execute(
                     text("DELETE FROM product_catalog WHERE supplier_id = :sid"),
                     {"sid": supplier_id}
                 )
-                conn.commit()
                 print(f"[INFO] DB: Old records for ID {supplier_id} deleted.")
 
-            # КРОК Б: Запис нових даних
-            # Видаляємо символ NUL та пишемо частинами для швидкості
-            out_df = out_df.replace('\x00', '', regex=True)
-            out_df.to_sql('product_catalog', con=engine, if_exists='append', index=False, chunksize=10000)
+            # КРОК Б: Запис нових даних через Pandas
+            # ⚠️ ПЕРЕВІРКА: Переконайся, що в out_df колонка з ціною називається 'price_eur'
+            out_df_db = out_df.replace('\x00', '', regex=True)
 
-            print(f"[INFO] PostgreSQL: SUCCESS! Site prices updated.")
+            out_df_db.to_sql(
+                'product_catalog',
+                con=engine,
+                if_exists='append',
+                index=False,
+                chunksize=5000
+            )
+
+            print(f"[INFO] PostgreSQL: SUCCESS! {len(out_df_db)} items pushed to Supabase.")
+
         except Exception as e:
             print(f"[ERROR] Database save failed: {e}")
 
