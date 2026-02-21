@@ -17,7 +17,7 @@ app = FastAPI(title="Maxgear API")
 
 # === ДОДАТИ ЦЕЙ БЛОК ===
 origins = [
-    "https://mg-autoparts-frontend.vercel.app"
+    "https://mg-autoparts-frontend.vercel.app",
     "http://localhost:5173", # Адреса вашого Vite фронтенду (перевірте порт при запуску)
     "http://127.0.0.1:5173",
     "http://localhost:5174"
@@ -26,7 +26,7 @@ origins = [
 # Налаштування CORS (щоб фронтенд міг робити запити)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
