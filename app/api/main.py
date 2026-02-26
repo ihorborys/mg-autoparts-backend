@@ -6,7 +6,7 @@ import uvicorn
 # --- ІМПОРТ РОУТЕРІВ ---
 # Ми імпортуємо наші модулі з папки routers
 # Якщо ви вже створили search.py на попередньому кроці, розкоментуйте цей рядок:
-from app.api.routers import search, admin
+from app.api.routers import search, admin, rate
 
 # -----------------------
 
@@ -44,6 +44,9 @@ app.include_router(admin.router, prefix="/admin", tags=["admin"])
 # Наприклад: /api/search
 # Якщо ви вже створили search.py, розкоментуйте цей рядок:
 app.include_router(search.router, prefix="/api", tags=["search"])
+
+# 3. Підключаємо Exchange Rate (обмінний курс) роутер
+app.include_router(rate.router, prefix="/api", tags=["exchange rate"])
 
 # ----------------------------
 
