@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, Query, HTTPException
 from typing import List, Dict, Any
 from sqlalchemy import create_engine, text
+import re
 
 # 1. Завантажуємо змінні з .env
 load_dotenv()
@@ -46,30 +47,42 @@ def search_products(
         q: str = Query(..., min_length=2, description="Пошуковий запит"),
         limit: int = Query(50, ge=1, le=200)
 ):
+    """
+    Пошук по коду, unicode, бренду та опису,
+    ігноруючи додаткові символи (пробіли, тире, слеші тощо)
+    як у запиті, так і в базі.
+    """
+    q = (q or "").strip()
     if not q:
         return []
 
     print(f"[INFO] API Search request: '{q}'")
 
     try:
-        # Тепер ми просто використовуємо вже готовий engine
+        # Нормалізований пошук: видаляємо все, крім букв/цифр з обох сторін
+        # Приклад:
+        #   code:  'ABC-123 / 45' -> 'ABC12345'
+        #   query: 'abc 123-45'   -> 'abc12345'
         sql_query = text("""
-                    SELECT supplier_id, code, unicode, brand, name, stock, price_eur
-                    FROM product_catalog
-                    WHERE
-                        code ILIKE :search_term
-                        OR name ILIKE :search_term
-                        OR brand ILIKE :search_term
-                    ORDER BY price_eur ASC
-                    LIMIT :limit_val
-                """)
+            SELECT supplier_id, code, unicode, brand, name, stock, price_eur
+            FROM product_catalog
+            WHERE
+                regexp_replace(code,    '[^[:alnum:]]', '', 'g') ILIKE '%' || regexp_replace(:q_raw, '[^[:alnum:]]', '', 'g') || '%'
+                OR regexp_replace(unicode, '[^[:alnum:]]', '', 'g') ILIKE '%' || regexp_replace(:q_raw, '[^[:alnum:]]', '', 'g') || '%'
+                OR regexp_replace(brand,  '[^[:alnum:]]', '', 'g') ILIKE '%' || regexp_replace(:q_raw, '[^[:alnum:]]', '', 'g') || '%'
+                OR regexp_replace(name,   '[^[:alnum:]]', '', 'g') ILIKE '%' || regexp_replace(:q_raw, '[^[:alnum:]]', '', 'g') || '%'
+            ORDER BY price_eur ASC
+            LIMIT :limit_val
+        """)
 
-        results = []
-        # 'with engine.connect()' автоматично бере вільне з'єднання з пулу
+        results: List[Dict[str, Any]] = []
         with engine.connect() as conn:
             rows = conn.execute(
                 sql_query,
-                {"search_term": f"%{q}%", "limit_val": limit}
+                {
+                    "q_raw": q,
+                    "limit_val": limit,
+                }
             )
 
             for row in rows:
