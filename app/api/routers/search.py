@@ -48,39 +48,44 @@ def search_products(
         limit: int = Query(50, ge=1, le=200)
 ):
     """
-    Пошук по коду, unicode, бренду та опису,
-    ігноруючи додаткові символи (пробіли, тире, слеші тощо)
-    як у запиті, так і в базі.
+    Пошук по коду, unicode, бренду та опису.
+    Для code/unicode ігноруємо додаткові символи (тире, пробіли, слеші тощо):
+    'OF-935' == 'OF935' == 'OF 935'.
     """
-    q = (q or "").strip()
-    if not q:
+    q_raw = (q or "").strip()
+    if not q_raw:
         return []
 
-    print(f"[INFO] API Search request: '{q}'")
+    # Готуємо "чистий" запит у Python (OF-935 -> OF935)
+    q_clean = re.sub(r'[^a-zA-Z0-9]', '', q_raw).upper()
+
+    print(f"[INFO] API Search request: raw='{q_raw}', clean='{q_clean}'")
 
     try:
-        # Нормалізований пошук: видаляємо все, крім букв/цифр з обох сторін
-        # Приклад:
-        #   code:  'ABC-123 / 45' -> 'ABC12345'
-        #   query: 'abc 123-45'   -> 'abc12345'
+        # Нормалізований пошук по code/unicode (видаляємо не‑алфанумеричні символи в БД)
         sql_query = text("""
             SELECT supplier_id, code, unicode, brand, name, stock, price_eur
             FROM product_catalog
             WHERE
-                regexp_replace(code,    '[^[:alnum:]]', '', 'g') ILIKE '%' || regexp_replace(:q_raw, '[^[:alnum:]]', '', 'g') || '%'
-                OR regexp_replace(unicode, '[^[:alnum:]]', '', 'g') ILIKE '%' || regexp_replace(:q_raw, '[^[:alnum:]]', '', 'g') || '%'
-                OR regexp_replace(brand,  '[^[:alnum:]]', '', 'g') ILIKE '%' || regexp_replace(:q_raw, '[^[:alnum:]]', '', 'g') || '%'
-                OR regexp_replace(name,   '[^[:alnum:]]', '', 'g') ILIKE '%' || regexp_replace(:q_raw, '[^[:alnum:]]', '', 'g') || '%'
-            ORDER BY price_eur ASC
+                regexp_replace(unicode, '[^[:alnum:]]', '', 'g') ILIKE :q_clean_like
+                OR regexp_replace(code,   '[^[:alnum:]]', '', 'g') ILIKE :q_clean_like
+                OR brand ILIKE :q_raw_like
+                OR name  ILIKE :q_raw_like
+            ORDER BY
+                (regexp_replace(unicode, '[^[:alnum:]]', '', 'g') = :q_clean) DESC,
+                price_eur ASC
             LIMIT :limit_val
         """)
 
         results: List[Dict[str, Any]] = []
+
         with engine.connect() as conn:
             rows = conn.execute(
                 sql_query,
                 {
-                    "q_raw": q,
+                    "q_clean_like": f"%{q_clean}%",  # Для коду/унікоду (OF935)
+                    "q_raw_like": f"%{q_raw}%",      # Для бренду/опису (як ввів користувач)
+                    "q_clean": q_clean,              # Для ORDER BY (точні збіги вгору)
                     "limit_val": limit,
                 }
             )
@@ -88,9 +93,9 @@ def search_products(
             for row in rows:
                 results.append(dict(row._mapping))
 
-        print(f"[INFO] API Search found {len(results)} items for '{q}'")
+        print(f"[INFO] API Search found {len(results)} items")
         return results
 
     except Exception as e:
         print(f"[ERROR] Database search failed: {e}")
-        raise HTTPException(status_code=500, detail="Database search error")
+        raise HTTPException(status_code=500, detail=str(e))
