@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 import yaml
+import re
 
 from app.services.paths import CONFIG_DIR
 # --- ВАЖЛИВО: Імпортуємо обидві функції ---
@@ -56,6 +57,20 @@ def process_all_prices(
     )
 
     print(f"[MANAGER] ✅ База готова! Всього позицій: {len(base_df)}")
+
+    # ============================================================
+    # ⬇️ НОВА ЛОГІКА НОРМАЛІЗАЦІЇ UNICODE ⬇️
+    # ============================================================
+    # 1. Якщо це Постачальник 2 (AP_GDANSK) або якщо колонки unicode випадково немає
+    if supplier_id == 2 or 'unicode' not in base_df.columns:
+        base_df['unicode'] = base_df['code']
+
+    # 2. Очищаємо unicode для ВСІХ постачальників (і для 1, і для 2, і для 3)
+    # Видаляємо пробіли, тире, крапки та робимо UPPERCASE
+    base_df['unicode'] = base_df['unicode'].astype(str).str.replace(r'[^a-zA-Z0-9]', '', regex=True).str.upper()
+
+    print(f"[MANAGER] ✨ Unicode нормалізовано для {supplier} (ID: {supplier_id})")
+    # ============================================================
 
     results: List[Dict[str, Any]] = []
 
