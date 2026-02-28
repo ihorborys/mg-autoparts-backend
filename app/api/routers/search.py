@@ -48,11 +48,20 @@ def search_products(
     if not q_raw:
         return []
 
-    # 1. Готуємо "чистий" запит для B-tree (A-Z, 0-9)
-    # Важливо: використовуємо той самий метод, що і в Processor
+
+    # 1. Готуємо "чистий" запит (видаляємо все крім A-Z, 0-9)
     q_clean = re.sub(r'[^A-Za-z0-9]', '', q_raw).upper()
 
+    # --- НОВИЙ БЛОК: ЗАХИСТ ---
+    # Якщо після очищення запит став порожнім (наприклад, тільки кирилиця)
+    # АБО запит занадто короткий (менше 2 символів)
+    if not q_clean or len(q_clean) < 2:
+        print(f"[INFO] API Search: Blocked invalid/Cyrillic query: '{q_raw}'")
+        return []
+        # --------------------------
+
     print(f"[INFO] API Search request: raw='{q_raw}', clean='{q_clean}'")
+
     t0 = time.perf_counter()
 
     try:
