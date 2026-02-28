@@ -38,6 +38,76 @@ engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 HAS_NORM_COLUMNS: Optional[bool] = None
 
 
+# @router.get("/search", response_model=List[Dict[str, Any]])
+# def search_products(
+#         response: Response,
+#         q: str = Query(..., min_length=2, description="Пошуковий запит"),
+#         limit: int = Query(50, ge=1, le=200)
+# ):
+#     q_raw = (q or "").strip()
+#     if not q_raw:
+#         return []
+#
+#
+#     # 1. Готуємо "чистий" запит (видаляємо все крім A-Z, 0-9)
+#     q_clean = re.sub(r'[^A-Za-z0-9]', '', q_raw).upper()
+#
+#     # --- НОВИЙ БЛОК: ЗАХИСТ ---
+#     # Якщо після очищення запит став порожнім (наприклад, тільки кирилиця)
+#     # АБО запит занадто короткий (менше 2 символів)
+#     if not q_clean or len(q_clean) < 2:
+#         print(f"[INFO] API Search: Blocked invalid/Cyrillic query: '{q_raw}'")
+#         return []
+#         # --------------------------
+#
+#     print(f"[INFO] API Search request: raw='{q_raw}', clean='{q_clean}'")
+#
+#     t0 = time.perf_counter()
+#
+#     try:
+#         results: List[Dict[str, Any]] = []
+#
+#         with engine.connect() as conn:
+#             # 2. ПРЯМИЙ ТА ШВИДКИЙ SQL
+#             # Ми замінили ILIKE '%...%' на LIKE '...%' для швидкості B-tree
+#             sql_query = text("""
+#                 SELECT supplier_id, code, unicode, brand, name, stock, price_eur
+#                 FROM product_catalog
+#                 WHERE
+#                     unicode_norm LIKE :q_prefix      -- Пошук за початком (B-tree)
+#                     OR code_norm LIKE :q_prefix      -- Пошук за початком (B-tree)
+#                     OR brand_norm = :q_clean         -- Точний пошук бренду (Миттєво)
+#                 ORDER BY
+#                     (unicode_norm = :q_clean OR code_norm = :q_clean) DESC, -- Точний номер вище за все
+#                     price_eur ASC                                          -- Найдешевші перші
+#
+#                 LIMIT :limit_val
+#             """)
+#
+#             rows = conn.execute(
+#                 sql_query,
+#                 {
+#                     "q_prefix": f"{q_clean}%",  # Працює з B-tree індексом
+#                     "q_clean": q_clean,  # Для точного збігу та бренду
+#                     "limit_val": limit,
+#                 },
+#             )
+#
+#             for row in rows:
+#                 results.append(dict(row._mapping))
+#
+#         # Додаємо час виконання в хедери (для дебагу)
+#         elapsed_ms = (time.perf_counter() - t0) * 1000
+#         response.headers["X-Search-Ms"] = f"{elapsed_ms:.1f}"
+#
+#         print(f"[INFO] API Search found {len(results)} items in {elapsed_ms:.1f} ms")
+#         return results
+#
+#     except Exception as e:
+#         print(f"[ERROR] Database search failed: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/search", response_model=List[Dict[str, Any]])
 def search_products(
         response: Response,
@@ -48,55 +118,76 @@ def search_products(
     if not q_raw:
         return []
 
+    # Допоміжна функція для очищення окремих слів
+    def clean_val(text: str) -> str:
+        return re.sub(r'[^A-Za-z0-9]', '', text).upper()
 
-    # 1. Готуємо "чистий" запит (видаляємо все крім A-Z, 0-9)
-    q_clean = re.sub(r'[^A-Za-z0-9]', '', q_raw).upper()
+    # Розбиваємо запит на окремі слова
+    words = q_raw.split()
+    q_clean_full = clean_val(q_raw)
 
-    # --- НОВИЙ БЛОК: ЗАХИСТ ---
-    # Якщо після очищення запит став порожнім (наприклад, тільки кирилиця)
-    # АБО запит занадто короткий (менше 2 символів)
-    if not q_clean or len(q_clean) < 2:
-        print(f"[INFO] API Search: Blocked invalid/Cyrillic query: '{q_raw}'")
+    # --- ЗАХИСТ ---
+    if not q_clean_full or len(q_clean_full) < 2:
+        print(f"[INFO] API Search: Blocked invalid query: '{q_raw}'")
         return []
-        # --------------------------
 
-    print(f"[INFO] API Search request: raw='{q_raw}', clean='{q_clean}'")
-
+    print(f"[INFO] API Search request: raw='{q_raw}', words_count={len(words)}")
     t0 = time.perf_counter()
 
     try:
         results: List[Dict[str, Any]] = []
 
         with engine.connect() as conn:
-            # 2. ПРЯМИЙ ТА ШВИДКИЙ SQL
-            # Ми замінили ILIKE '%...%' на LIKE '...%' для швидкості B-tree
-            sql_query = text("""
-                SELECT supplier_id, code, unicode, brand, name, stock, price_eur
-                FROM product_catalog
-                WHERE
-                    unicode_norm LIKE :q_prefix      -- Пошук за початком (B-tree)
-                    OR code_norm LIKE :q_prefix      -- Пошук за початком (B-tree)
-                    OR brand_norm = :q_clean         -- Точний пошук бренду (Миттєво)
-                ORDER BY
-                    (unicode_norm = :q_clean OR code_norm = :q_clean) DESC, -- Точний номер вище за все
-                    price_eur ASC                                          -- Найдешевші перші
-         
-                LIMIT :limit_val
-            """)
+            # СЦЕНАРІЙ А: Два або більше слів (напр. "SACHS 315187" або "315187 SACHS")
+            if len(words) >= 2:
+                w1 = clean_val(words[0])
+                w2 = clean_val("".join(words[1:]))  # Решту слів зліплюємо в одну частину
 
-            rows = conn.execute(
-                sql_query,
-                {
-                    "q_prefix": f"{q_clean}%",  # Працює з B-tree індексом
-                    "q_clean": q_clean,  # Для точного збігу та бренду
-                    "limit_val": limit,
-                },
-            )
+                sql_query = text("""
+                    SELECT supplier_id, code, unicode, brand, name, stock, price_eur
+                    FROM product_catalog
+                    WHERE 
+                        -- Варіант 1: Перше слово бренд, друге код
+                        (brand_norm LIKE :w1_p AND (code_norm LIKE :w2_p OR unicode_norm LIKE :w2_p))
+                        OR
+                        -- Варіант 2: Перше слово код, друге бренд
+                        (brand_norm LIKE :w2_p AND (code_norm LIKE :w1_p OR unicode_norm LIKE :w1_p))
+                    ORDER BY 
+                        (stock > 0) DESC, 
+                        price_eur ASC
+                    LIMIT :limit_val
+                """)
+                params = {
+                    "w1_p": f"{w1}%",
+                    "w2_p": f"{w2}%",
+                    "limit_val": limit
+                }
 
+            # СЦЕНАРІЙ Б: Одне слово (напр. "GDB1330" або "BOSCH")
+            else:
+                sql_query = text("""
+                    SELECT supplier_id, code, unicode, brand, name, stock, price_eur
+                    FROM product_catalog
+                    WHERE
+                        unicode_norm LIKE :q_p
+                        OR code_norm LIKE :q_p
+                        OR brand_norm LIKE :q_p
+                    ORDER BY
+                        (unicode_norm = :q_c OR code_norm = :q_c) DESC, -- Точний збіг артикула вгору
+                        (stock > 0) DESC,                             -- Те, що є в наявності - вище
+                        price_eur ASC                                 -- Найдешевші
+                    LIMIT :limit_val
+                """)
+                params = {
+                    "q_p": f"{q_clean_full}%",
+                    "q_c": q_clean_full,
+                    "limit_val": limit
+                }
+
+            rows = conn.execute(sql_query, params)
             for row in rows:
                 results.append(dict(row._mapping))
 
-        # Додаємо час виконання в хедери (для дебагу)
         elapsed_ms = (time.perf_counter() - t0) * 1000
         response.headers["X-Search-Ms"] = f"{elapsed_ms:.1f}"
 
