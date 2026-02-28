@@ -8,12 +8,15 @@ from datetime import datetime
 from typing import Tuple, List, Dict, Any, Optional
 from pathlib import Path
 
+
 import pandas as pd
 # --- Імпорт text для безпечних SQL-запитів ---
 from sqlalchemy import create_engine, text
 
 from app.services.paths import TEMP_DIR
 from app.services.storage import StorageClient
+
+from re import sub
 
 
 # ----------------------- FTP / unzip -----------------------
@@ -461,68 +464,6 @@ def process_one_price(
 
             # Використовуємо .begin() для автоматичного збереження (COMMIT)
             with engine.begin() as conn:
-                # --- АВТОМАТИЧНЕ СТВОРЕННЯ ТАБЛИЦІ (якщо ти нічого не створював) ---
-                conn.execute(text("""
-                        CREATE TABLE IF NOT EXISTS product_catalog (
-                            id SERIAL PRIMARY KEY,
-                            supplier_id INT,
-                            code VARCHAR(255),
-                            unicode VARCHAR(255),
-                            brand VARCHAR(255),
-                            name TEXT,
-                            stock INT,
-                            price_eur DECIMAL(10, 2),
-                            code_norm VARCHAR(255),
-                            unicode_norm VARCHAR(255),
-                            brand_norm VARCHAR(255)
-                        );
-                    """))
-                # На всяк випадок — додаємо нові колонки, якщо таблиця вже існує без них
-                conn.execute(text("""
-                    ALTER TABLE product_catalog
-                    ADD COLUMN IF NOT EXISTS code_norm VARCHAR(255);
-                """))
-                conn.execute(text("""
-                    ALTER TABLE product_catalog
-                    ADD COLUMN IF NOT EXISTS unicode_norm VARCHAR(255);
-                """))
-                conn.execute(text("""
-                    ALTER TABLE product_catalog
-                    ADD COLUMN IF NOT EXISTS brand_norm VARCHAR(255);
-                """))
-                # Індекси для швидкого пошуку по code_norm / unicode_norm / brand_norm
-                conn.execute(text("""
-                    CREATE INDEX IF NOT EXISTS idx_product_catalog_code_norm
-                    ON product_catalog (code_norm);
-                """))
-                conn.execute(text("""
-                    CREATE INDEX IF NOT EXISTS idx_product_catalog_unicode_norm
-                    ON product_catalog (unicode_norm);
-                """))
-                conn.execute(text("""
-                    CREATE INDEX IF NOT EXISTS idx_product_catalog_brand_norm
-                    ON product_catalog (brand_norm);
-                """))
-                # Триграмні індекси (pg_trgm) — прискорюють ILIKE '%...%'
-                try:
-                    conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm;"))
-                    conn.execute(text("""
-                        CREATE INDEX IF NOT EXISTS idx_product_catalog_code_norm_gin
-                        ON product_catalog USING gin (code_norm gin_trgm_ops);
-                    """))
-                    conn.execute(text("""
-                        CREATE INDEX IF NOT EXISTS idx_product_catalog_unicode_norm_gin
-                        ON product_catalog USING gin (unicode_norm gin_trgm_ops);
-                    """))
-                    conn.execute(text("""
-                        CREATE INDEX IF NOT EXISTS idx_product_catalog_brand_norm_gin
-                        ON product_catalog USING gin (brand_norm gin_trgm_ops);
-                    """))
-                    print("[INFO] DB: pg_trgm GIN indexes created.")
-                except Exception as e:
-                    print(f"[WARN] DB: pg_trgm indexes skipped ({e}). Run SQL manually in Supabase if needed.")
-                print("[INFO] DB: Table, columns & indexes check/creation DONE.")
-
                 # КРОК А: Очищення старих даних цього постачальника
                 conn.execute(
                     text("DELETE FROM product_catalog WHERE supplier_id = :sid"),
@@ -530,14 +471,12 @@ def process_one_price(
                 )
                 print(f"[INFO] DB: Old records for ID {supplier_id} deleted.")
 
-            # КРОК Б: Запис нових даних через Pandas
-            # ⚠️ ПЕРЕВІРКА: Переконайся, що в out_df колонка з ціною називається 'price_eur'
             out_df_db = out_df.replace('\x00', '', regex=True)
 
             # Додаємо нормалізовані колонки для швидкого пошуку
             def _norm_val(v: str) -> str:
-                from re import sub
-                return sub(r'[^A-Za-z0-9]', '', str(v or "")).upper()
+                if not v or pd.isna(v): return ""  # Захист від порожніх клітинок
+                return re.sub(r'[^A-Za-z0-9]', '', str(v)).upper()
 
             if "code" in out_df_db.columns:
                 out_df_db["code_norm"] = out_df_db["code"].apply(_norm_val)
