@@ -445,7 +445,7 @@ def process_one_price(
         df_std, price_final, columns_cfg=columns, supplier_id=supplier_id
     )
 
-    # 4) ЗАПИС У POSTGRESQL (тільки для сайтів)
+        # 4) ЗАПИС У POSTGRESQL (тільки для сайтів)
     if "/site/" in r2_prefix and supplier_id is not None:
         try:
             print(f"[INFO] DB Trigger: Updating site prices for ID {supplier_id}...")
@@ -471,10 +471,57 @@ def process_one_price(
                             brand VARCHAR(255),
                             name TEXT,
                             stock INT,
-                            price_eur DECIMAL(10, 2)
+                            price_eur DECIMAL(10, 2),
+                            code_norm VARCHAR(255),
+                            unicode_norm VARCHAR(255),
+                            brand_norm VARCHAR(255)
                         );
                     """))
-                print("[INFO] DB: Table check/creation DONE.")
+                # На всяк випадок — додаємо нові колонки, якщо таблиця вже існує без них
+                conn.execute(text("""
+                    ALTER TABLE product_catalog
+                    ADD COLUMN IF NOT EXISTS code_norm VARCHAR(255);
+                """))
+                conn.execute(text("""
+                    ALTER TABLE product_catalog
+                    ADD COLUMN IF NOT EXISTS unicode_norm VARCHAR(255);
+                """))
+                conn.execute(text("""
+                    ALTER TABLE product_catalog
+                    ADD COLUMN IF NOT EXISTS brand_norm VARCHAR(255);
+                """))
+                # Індекси для швидкого пошуку по code_norm / unicode_norm / brand_norm
+                conn.execute(text("""
+                    CREATE INDEX IF NOT EXISTS idx_product_catalog_code_norm
+                    ON product_catalog (code_norm);
+                """))
+                conn.execute(text("""
+                    CREATE INDEX IF NOT EXISTS idx_product_catalog_unicode_norm
+                    ON product_catalog (unicode_norm);
+                """))
+                conn.execute(text("""
+                    CREATE INDEX IF NOT EXISTS idx_product_catalog_brand_norm
+                    ON product_catalog (brand_norm);
+                """))
+                # Триграмні індекси (pg_trgm) — прискорюють ILIKE '%...%'
+                try:
+                    conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm;"))
+                    conn.execute(text("""
+                        CREATE INDEX IF NOT EXISTS idx_product_catalog_code_norm_gin
+                        ON product_catalog USING gin (code_norm gin_trgm_ops);
+                    """))
+                    conn.execute(text("""
+                        CREATE INDEX IF NOT EXISTS idx_product_catalog_unicode_norm_gin
+                        ON product_catalog USING gin (unicode_norm gin_trgm_ops);
+                    """))
+                    conn.execute(text("""
+                        CREATE INDEX IF NOT EXISTS idx_product_catalog_brand_norm_gin
+                        ON product_catalog USING gin (brand_norm gin_trgm_ops);
+                    """))
+                    print("[INFO] DB: pg_trgm GIN indexes created.")
+                except Exception as e:
+                    print(f"[WARN] DB: pg_trgm indexes skipped ({e}). Run SQL manually in Supabase if needed.")
+                print("[INFO] DB: Table, columns & indexes check/creation DONE.")
 
                 # КРОК А: Очищення старих даних цього постачальника
                 conn.execute(
@@ -486,6 +533,26 @@ def process_one_price(
             # КРОК Б: Запис нових даних через Pandas
             # ⚠️ ПЕРЕВІРКА: Переконайся, що в out_df колонка з ціною називається 'price_eur'
             out_df_db = out_df.replace('\x00', '', regex=True)
+
+            # Додаємо нормалізовані колонки для швидкого пошуку
+            def _norm_val(v: str) -> str:
+                from re import sub
+                return sub(r'[^A-Za-z0-9]', '', str(v or "")).upper()
+
+            if "code" in out_df_db.columns:
+                out_df_db["code_norm"] = out_df_db["code"].apply(_norm_val)
+            else:
+                out_df_db["code_norm"] = None
+
+            if "unicode" in out_df_db.columns:
+                out_df_db["unicode_norm"] = out_df_db["unicode"].apply(_norm_val)
+            else:
+                out_df_db["unicode_norm"] = None
+
+            if "brand" in out_df_db.columns:
+                out_df_db["brand_norm"] = out_df_db["brand"].apply(_norm_val)
+            else:
+                out_df_db["brand_norm"] = None
 
             out_df_db.to_sql(
                 'product_catalog',
