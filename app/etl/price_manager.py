@@ -65,12 +65,12 @@ def process_all_prices(
     if supplier_id == 2 or 'unicode' not in base_df.columns:
         base_df['unicode'] = base_df['code']
 
-    # 2. Очищаємо unicode для ВСІХ постачальників (і для 1, і для 2, і для 3)
-    # Видаляємо пробіли, тире, крапки та робимо UPPERCASE
-    base_df['unicode'] = base_df['unicode'].astype(str).str.replace(r'[^a-zA-Z0-9]', '', regex=True).str.upper()
-
-    print(f"[MANAGER] ✨ Unicode нормалізовано для {supplier} (ID: {supplier_id})")
-    # ============================================================
+    # # 2. Очищаємо unicode для ВСІХ постачальників (і для 1, і для 2, і для 3)
+    # # Видаляємо пробіли, тире, крапки та робимо UPPERCASE
+    # base_df['unicode'] = base_df['unicode'].astype(str).str.replace(r'[^a-zA-Z0-9]', '', regex=True).str.upper()
+    #
+    # print(f"[MANAGER] ✨ Unicode нормалізовано для {supplier} (ID: {supplier_id})")
+    # # ============================================================
 
     results: List[Dict[str, Any]] = []
 
