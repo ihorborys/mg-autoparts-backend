@@ -1,7 +1,8 @@
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 import yaml
-import re
+from .translation_manager import translate_dataframe_names  # Створимо цей файл
+from app.database import engine
 
 from app.services.paths import CONFIG_DIR
 # --- ВАЖЛИВО: Імпортуємо обидві функції ---
@@ -55,6 +56,18 @@ def process_all_prices(
         additional_files=additional_files,
         remote_gz_path=remote_gz_path
     )
+
+    # ============================================================
+    # 🌍 НОВИЙ БЛОК: ПЕРЕКЛАД ЧЕРЕЗ СЛОВНИК 🌍
+    # ============================================================
+
+    if 'name' in base_df.columns:
+        print(f"[MANAGER] 🌍 Переклад назв для {len(base_df)} позицій...")
+        base_df['name'] = translate_dataframe_names(base_df['name'], engine)
+        print(f"[MANAGER] ✅ Переклад завершено!")
+    # ============================================================
+
+
 
     print(f"[MANAGER] ✅ База готова! Всього позицій: {len(base_df)}")
 

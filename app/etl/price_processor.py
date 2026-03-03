@@ -16,8 +16,6 @@ from sqlalchemy import create_engine, text
 from app.services.paths import TEMP_DIR
 from app.services.storage import StorageClient
 
-from re import sub
-
 
 # ----------------------- FTP / unzip -----------------------
 
