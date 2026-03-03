@@ -60,11 +60,14 @@ def process_all_prices(
     # ============================================================
     # 🌍 НОВИЙ БЛОК: ПЕРЕКЛАД ЧЕРЕЗ СЛОВНИК 🌍
     # ============================================================
-
     if 'name' in base_df.columns:
-        print(f"[MANAGER] 🌍 Переклад назв для {len(base_df)} позицій...")
-        base_df['name'] = translate_dataframe_names(base_df['name'], engine)
-        print(f"[MANAGER] ✅ Переклад завершено!")
+        # ПЕРЕВІРКА: Не перекладаємо для Гданська (ID 2), бо там описи = коди
+        if supplier_id == 2:
+            print(f"[MANAGER] ℹ️ Пропускаємо переклад для Гданська (ID: {supplier_id}), оскільки описи дублюють коди.")
+        else:
+            print(f"[MANAGER] 🌍 Переклад назв для {len(base_df)} позицій...")
+            base_df['name'] = translate_dataframe_names(base_df['name'], engine)
+            print(f"[MANAGER] ✅ Переклад завершено!")
     # ============================================================
 
 

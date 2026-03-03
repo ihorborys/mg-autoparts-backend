@@ -43,6 +43,8 @@ def search_products(
             if len(words) >= 2:
                 w1 = clean_val(words[0])
                 w2 = clean_val("".join(words[1:]))  # Решту слів зліплюємо в одну частину
+                # Склеюємо все разом (напр. "LMI38820 01" -> "LMI3882001")
+                full_combined = clean_val("".join(words))
 
                 sql_query = text("""
                     SELECT supplier_id, code, unicode, brand, name, stock, price_eur
@@ -53,6 +55,9 @@ def search_products(
                         OR
                         -- Варіант 2: Перше слово код, друге бренд
                         (brand_norm LIKE :w2_p AND (code_norm LIKE :w1_p OR unicode_norm LIKE :w1_p))
+                        OR
+                        -- Варіант 3: Користувач ввів розірваний артикул (напр. LMI38820 01)
+                (code_norm = :full OR unicode_norm = :full)
                     ORDER BY 
                         (stock > 0) DESC, 
                         price_eur ASC
@@ -61,6 +66,7 @@ def search_products(
                 params = {
                     "w1_p": f"{w1}%",
                     "w2_p": f"{w2}%",
+                    "full": full_combined,  # Передаємо напр. "LMI3882001"
                     "limit_val": limit
                 }
 
