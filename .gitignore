@@ -1,9 +1,29 @@
+# Віртуальне середовище
 venv/
-__pycache__/
-.env
-.idea/
-.vscode/
+.venv/
+
+# Дані та Бази даних
+data/
+*.db
+*.sqlite
 *.sqlite3
-# Секретні файли Google
+*.db-journal
+
+# Кеш Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Налаштування середовища (Секрети)
+.env
 app/config/token.json
 app/config/credentials.json
+
+# Налаштування IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Логи
+*.log

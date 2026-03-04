@@ -6,8 +6,8 @@ import uvicorn
 
 # --- ІМПОРТ РОУТЕРІВ ---
 from app.api.routers import search, prices, rate
-# Імпортуємо функцію ініціалізації бази даних
-from app.database import init_db
+# # Імпортуємо функцію ініціалізації бази даних
+# from app.database import init_db
 
 # Завантаження змінних оточення
 load_dotenv()
@@ -18,7 +18,7 @@ load_dotenv()
 async def lifespan(app: FastAPI):
     # Цей код спрацює ОДИН РАЗ при запуску сервера
     print("[STARTUP] Checking database and tables...")
-    init_db()
+    # init_db()
     yield
     # Тут можна додати код для завершення роботи (якщо треба)
 

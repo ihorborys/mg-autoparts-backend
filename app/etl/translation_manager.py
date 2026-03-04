@@ -1,61 +1,33 @@
-import pandas as pd
-from sqlalchemy import text
-from app.services.translator import translate_batch
+from app.services.translator import translate_products
 
 
-def translate_dataframe_names(names_series: pd.Series, engine) -> pd.Series:
-    # 1. Отримуємо список УНІКАЛЬНИХ назв
-    unique_names = names_series.unique().tolist()
-    unique_names = [str(n).strip() for n in unique_names if n and str(n).strip()]
+def process_price_translation(df, supplier_id, limit=1000):
+    """Готує дані та запускає переклад."""
 
-    if not unique_names:
-        return names_series
+    # --- ЗМІНА 1: Справжнє обмеження ---
+    # Ми беремо тільки верхівку (head), щоб не мучити Google
+    if limit:
+        df_to_work = df.head(limit).copy()
+    else:
+        df_to_work = df.copy()
 
-    # 2. Перевіряємо, що вже є в БД
-    translations = {}
-    print(f"[TRANS] 🔎 Шукаємо існуючі переклади в БД для {len(unique_names)} унікальних назв...")
+    # --- ЗМІНА 2: Робота тільки з обмеженим списком ---
+    raw_list = df_to_work[['code', 'name', 'unicode']].to_dict('records')
 
-    with engine.connect() as conn:
-        # Використовуємо ANY(:names) - це дуже швидко в PostgreSQL
-        query = text("SELECT pl_text, uk_text FROM translations_dictionary WHERE pl_text = ANY(:names)")
-        rows = conn.execute(query, {"names": unique_names}).fetchall()
-        for row in rows:
-            translations[row[0]] = row[1]
+    # 2. Отримуємо переклади (Cache -> Dict -> Google)
+    translations = translate_products(raw_list, supplier_id)
 
-    # 3. Знаходимо те, чого немає
-    all_missing = [n for n in unique_names if n not in translations]
+    # 3. Функція-помічник для підстановки
+    def get_uk_name(row):
+        key = (str(row['code']), str(row['name']).strip().upper())
+        return translations.get(key, row['name'])
 
-    if not all_missing:
-        print("[TRANS] ✅ Всі назви вже мають переклад у БД.")
-        return names_series.map(lambda x: translations.get(str(x).strip(), x))
+    # --- ЗМІНА 3: Оновлення тільки потрібної частини ---
+    if limit:
+        # Оновлюємо тільки перші N рядків у колонці 'name'
+        df.loc[:limit - 1, 'name'] = df_to_work.apply(get_uk_name, axis=1)
+    else:
+        # Оновлюємо весь стовпчик
+        df['name'] = df.apply(get_uk_name, axis=1)
 
-    # --- ЛІМІТУВАННЯ ---
-    LIMIT = 2000
-    missing_to_process = all_missing[:LIMIT]
-
-    print(f"[TRANS] 🔍 Знайдено нових фраз: {len(all_missing)}. Беремо в роботу перші {len(missing_to_process)}.")
-
-    # 4. Перекладаємо через Google (наш translator.py з чанками по 100 і паузами)
-    translated_list = translate_batch(missing_to_process)
-
-    # 5. Зберігаємо нові записи в БД
-    if translated_list:
-        print(f"[TRANS] 💾 Записуємо {len(translated_list)} нових перекладів до БД...")
-        with engine.connect() as conn:
-            for pl, uk in zip(missing_to_process, translated_list):
-                translations[pl] = uk
-                # Використовуємо ON CONFLICT, щоб не було помилок дублікатів
-                conn.execute(
-                    text("""
-                        INSERT INTO translations_dictionary (pl_text, uk_text) 
-                        VALUES (:pl, :uk) 
-                        ON CONFLICT (pl_text) DO NOTHING
-                    """),
-                    {"pl": pl, "uk": uk}
-                )
-            conn.commit()
-        print("[TRANS] ✅ БД оновлено.")
-
-    # 6. Мапимо результат
-    # Ті позиції, які не потрапили в ліміт 20к, залишаться польськими (до наступного імпорту)
-    return names_series.map(lambda x: translations.get(str(x).strip(), x))
+    return df
