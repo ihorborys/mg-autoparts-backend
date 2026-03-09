@@ -177,9 +177,7 @@ def search_products(
                     FROM product_catalog
                     WHERE unicode_norm LIKE :q_p OR code_norm LIKE :q_p OR brand_norm LIKE :q_p
                     ORDER BY
-                        (unicode_norm = :q_c OR code_norm = :q_c) DESC,
-                        (stock > 0) DESC,
-                        price_eur ASC
+                        (unicode_norm = :q_c OR code_norm = :q_c) DESC
                     LIMIT :limit_val
                 """)
                 params = {"q_p": f"{q_clean_full}%", "q_c": q_clean_full, "limit_val": limit}
