@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 import yaml
+import time
 
 # --- ОНОВЛЕНІ ІМПОРТИ ---
 from .translation_manager import process_price_translation
@@ -38,6 +39,11 @@ def process_all_prices(
     # Ініціалізуємо локальну базу (створюємо папку data/db, якщо її немає)
     # init_local_db()
 
+    # --- СТАТИСТИКА І ЧАС ВИКОНАННЯ ЗАПИТУ ---
+    # 1. Засікаємо старт у самому початку функції
+    start_etl = time.perf_counter()
+    print(f"\n[MANAGER] 🚀 Початок обробки для {supplier}...")
+
     profiles_cfg = _load_yaml(CONFIG_DIR / "profiles.yaml")
     profiles = profiles_cfg.get("profiles", [])
     common = profiles_cfg.get("common", {})
@@ -55,15 +61,15 @@ def process_all_prices(
         remote_gz_path=remote_gz_path
     )
 
-    # ============================================================
-    # ⬇️ ЛОГІКА UNICODE (ПЕРЕНЕСЕНО ПЕРЕД ПЕРЕКЛАДОМ) ⬇️
-    # ============================================================
-    if 'unicode' not in base_df.columns or supplier_id == 2:
-        base_df['unicode'] = base_df['code']
-
-    # Очищаємо unicode відразу для всіх (це ключ для нашої бази перекладів!)
-    base_df['unicode'] = base_df['unicode'].astype(str).str.replace(r'[^a-zA-Z0-9]', '', regex=True).str.upper()
-    print(f"[MANAGER] ✨ Unicode нормалізовано")
+    # # ============================================================
+    # # ⬇️ ЛОГІКА UNICODE (ПЕРЕНЕСЕНО ПЕРЕД ПЕРЕКЛАДОМ) ⬇️
+    # # ============================================================
+    # if 'unicode' not in base_df.columns or supplier_id == 2:
+    #     base_df['unicode'] = base_df['code']
+    #
+    # # Очищаємо unicode відразу для всіх (це ключ для нашої бази перекладів!)
+    # base_df['unicode'] = base_df['unicode'].astype(str).str.replace(r'[^a-zA-Z0-9]', '', regex=True).str.upper()
+    # print(f"[MANAGER] ✨ Unicode нормалізовано")
 
     # ============================================================
     # 🏷️ НОРМАЛІЗАЦІЯ БРЕНДІВ (НОВИЙ БЛОК) 🏷️
@@ -86,7 +92,7 @@ def process_all_prices(
         else:
             print(f"[MANAGER] 🌍 Переклад назв для {len(base_df)} позицій...")
             # Викликаємо нову логіку (SQLite -> Google)
-            base_df = process_price_translation(base_df, supplier_id, limit=1000)
+            base_df = process_price_translation(base_df, supplier_id, limit=1)
 
             print(f"[MANAGER] ✅ Переклад завершено!")
 
@@ -164,5 +170,20 @@ def process_all_prices(
     # # 📦 РОБИМО БЕКАП БАЗИ ПЕРЕКЛАДІВ У ХМАРУ
     # print(f"[MANAGER] 📦 Відправка бекапу бази перекладів у Cloudflare R2...")
     # backup_db_to_r2(keep_last=3)
+
+
+    # --- СТАТИСТИКА І ЧАС ВИКОНАННЯ ЗАПИТУ ---
+    end_etl = time.perf_counter()
+    total_time = end_etl - start_etl
+
+    # Конвертуємо в хвилини та секунди для зручності
+    minutes = int(total_time // 60)
+    seconds = total_time % 60
+
+    print(f"\n" + "=" * 40)
+    print(f"✅ [ETL COMPLETE] Постачальник: {supplier}")
+    print(f"⏱️ Загальний час: {minutes}хв {seconds:.2f}с")
+    print(f"📊 Позицій оброблено: {len(base_df)}")
+    print("=" * 40 + "\n")
 
     return results

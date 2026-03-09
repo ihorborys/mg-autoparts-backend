@@ -65,7 +65,7 @@ profiles:
       fallback: { policy: manual_fixed, value: 50 }  # якщо API недоступне
     columns:
       - { from: brand,  header: "brand" }
-      - { from: code,   header: "code" }
+      - { from: unicode,   header: "code" }
       - { from: stock,  header: "stock" }
       - { from: price,  header: "price_uah" }
 
