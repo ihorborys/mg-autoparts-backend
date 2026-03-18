@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 
 # --- ІМПОРТ РОУТЕРІВ ---
-from app.api.routers import search, prices, rate
+from app.api.routers import search, prices, rate, cart
 # # Імпортуємо функцію ініціалізації бази даних
 # from app.database import init_db
 
@@ -42,10 +42,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- ПІДКЛЮЧЕННЯ РОУТЕРІВ ---
-app.include_router(prices.router, prefix="/prices", tags=["prices"])
-app.include_router(search.router, prefix="/api", tags=["search"])
-app.include_router(rate.router, prefix="/api", tags=["exchange rate"])
+# # --- ПІДКЛЮЧЕННЯ РОУТЕРІВ ---
+# app.include_router(prices.router, prefix="/prices", tags=["prices"])
+# app.include_router(search.router, prefix="/api", tags=["search"])
+# app.include_router(rate.router, prefix="/api", tags=["exchange rate"])
+# app.include_router(cart.router, prefix="/api", tags=["cart"])
+
+# --- ПІДКЛЮЧЕННЯ РОУТЕРІВ (Впорядковано) ---
+
+# 1. Каталог (Пошук)
+app.include_router(search.router, prefix="/api/catalog", tags=["Catalog"])
+
+# 2. Курси валют
+app.include_router(rate.router, prefix="/api/rates", tags=["Rates"])
+
+# 3. Кошик
+app.include_router(cart.router, prefix="/api/cart", tags=["Cart"])
+
+# 4. Адмінка (Імпорт цін) — виносимо в окремий сегмент /admin
+app.include_router(prices.router, prefix="/api/admin/prices", tags=["Admin"])
 
 
 @app.get("/")

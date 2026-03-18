@@ -92,7 +92,7 @@ def process_all_prices(
         else:
             print(f"[MANAGER] 🌍 Переклад назв для {len(base_df)} позицій...")
             # Викликаємо нову логіку (SQLite -> Google)
-            base_df = process_price_translation(base_df, supplier_id, limit=1)
+            base_df = process_price_translation(base_df, supplier_id, limit=100)
 
             print(f"[MANAGER] ✅ Переклад завершено!")
 
