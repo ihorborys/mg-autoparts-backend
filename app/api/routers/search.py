@@ -14,7 +14,9 @@ router = APIRouter()
 def search_products(
         response: Response,
         q: str = Query(..., min_length=2, description="Пошуковий запит"),
-        limit: int = Query(50, ge=1, le=200)
+        limit: int = Query(50, ge=1, le=200),
+        offset: int = Query(0, ge=0)
+
 ):
     q_raw = (q or "").strip()
     if not q_raw:
@@ -56,9 +58,15 @@ def search_products(
                         OR
                         (code_norm = :full OR unicode_norm = :full)
                     ORDER BY (stock > 0) DESC, price_eur ASC
-                    LIMIT :limit_val
+                    LIMIT :limit_val OFFSET :offset_val
                 """)
-                params = {"w1_p": f"{w1}%", "w2_p": f"{w2}%", "full": full_combined, "limit_val": limit}
+                params = {
+                    "w1_p": f"{w1}%",
+                    "w2_p": f"{w2}%",
+                    "full": full_combined,
+                    "limit_val": limit,
+                    "offset_val": offset
+                }
 
             # СЦЕНАРІЙ Б: Одне слово (напр. "GDB1330")
             else:
@@ -70,9 +78,14 @@ def search_products(
                         (stock > 0) DESC,                                   -- 1. Спочатку те, що є в наявності
                         (unicode_norm = :q_c OR code_norm = :q_c) DESC,     -- 2. Потім точні збіги коду
                         price_eur ASC                                       -- 3. І ТЕПЕР за ціною!
-                    LIMIT :limit_val
+                    LIMIT :limit_val OFFSET :offset_val
                 """)
-                params = {"q_p": f"{q_clean_full}%", "q_c": q_clean_full, "limit_val": limit}
+                params = {
+                    "q_p": f"{q_clean_full}%",
+                    "q_c": q_clean_full,
+                    "limit_val": limit,
+                    "offset_val": offset
+                }
 
             # --- ⏱️ ВИМІРЮЄМО ЧИСТИЙ ЧАС SQL ---
             t_sql_start = time.perf_counter()
@@ -92,7 +105,7 @@ def search_products(
         response.headers["X-Total-Search-Ms"] = f"{total_ms:.1f}"
 
         # Гарний лог у консоль
-        print(f"🔍 [SEARCH] Запит: '{q_raw}' | Знайдено: {len(results)} | SQL: {sql_ms:.1f}ms | Total: {total_ms:.1f}ms")
+        print(f"🔍 [SEARCH] Запит: '{q_raw}' | | Offset: {offset} | Знайдено: {len(results)} | SQL: {sql_ms:.1f}ms | Total: {total_ms:.1f}ms")
 
         return results
 
