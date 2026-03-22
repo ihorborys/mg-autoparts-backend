@@ -136,3 +136,56 @@ async def get_cart(user_id: str):
     except Exception as e:
         print(f"Cart GET Error: {e}")
         raise HTTPException(status_code=500, detail="Не вдалося завантажити кошик")
+
+
+# --- 3. ОНОВЛЕННЯ КІЛЬКОСТІ (ТОЧНЕ ЗНАЧЕННЯ) ---
+# Використовується, коли юзер змінює кількість в самому кошику (input або +/-)
+@router.patch("/update")
+async def update_quantity(user_id: str, supplier_id: int, code: str, quantity: int):
+    if quantity < 1:
+        raise HTTPException(status_code=400, detail="Кількість не може бути менше 1")
+
+    try:
+        with engine.connect() as conn:
+            query = text("""
+                UPDATE cart_items 
+                SET quantity = :qty, created_at = NOW()
+                WHERE user_id = :u_id AND supplier_id = :s_id AND code = :code
+            """)
+            conn.execute(query, {"qty": quantity, "u_id": user_id, "s_id": supplier_id, "code": code})
+            conn.commit()
+        return {"status": "success", "message": "Кількість оновлено"}
+    except Exception as e:
+        print(f"Cart PATCH Error: {e}")
+        raise HTTPException(status_code=500, detail="Не вдалося оновити кількість")
+
+
+# --- 4. ВИДАЛЕННЯ ОДНОГО ТОВАРУ ---
+@router.delete("/{user_id}/{supplier_id}/{code}")
+async def remove_item(user_id: str, supplier_id: int, code: str):
+    try:
+        with engine.connect() as conn:
+            query = text("""
+                DELETE FROM cart_items 
+                WHERE user_id = :u_id AND supplier_id = :s_id AND code = :code
+            """)
+            conn.execute(query, {"u_id": user_id, "s_id": supplier_id, "code": code})
+            conn.commit()
+        return {"status": "success", "message": "Товар видалено з кошика"}
+    except Exception as e:
+        print(f"Cart DELETE Item Error: {e}")
+        raise HTTPException(status_code=500, detail="Не вдалося видалити товар")
+
+
+# --- 5. ОЧИЩЕННЯ ВСЬОГО КОШИКА ---
+@router.delete("/{user_id}")
+async def clear_cart(user_id: str):
+    try:
+        with engine.connect() as conn:
+            query = text("DELETE FROM cart_items WHERE user_id = :u_id")
+            conn.execute(query, {"u_id": user_id})
+            conn.commit()
+        return {"status": "success", "message": "Кошик очищено"}
+    except Exception as e:
+        print(f"Cart CLEAR Error: {e}")
+        raise HTTPException(status_code=500, detail="Не вдалося очистити кошик")
