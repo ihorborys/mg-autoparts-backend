@@ -67,68 +67,16 @@ class CartItemIn(BaseModel):
     price_eur: float
 
 
-# --- 1. ДОДАВАННЯ ТОВАРУ (З ПІДТРИМКОЮ ТОСТІВ) ---
-# @router.post("/")
-# async def add_to_cart(item: CartItemIn):
-#     try:
-#         with engine.connect() as conn:
-#             # 1. Спершу дізнаємося актуальний залишок (stock) у каталозі
-#             # Це потрібно, щоб фронтенд відразу знав ліміт для нової позиції
-#             stock_query = text("""
-#                             SELECT stock FROM product_catalog
-#                             WHERE code = :code AND supplier_id = :s_id
-#                         """)
-#             stock_res = conn.execute(stock_query, {"code": item.code, "s_id": item.supplier_id}).scalar()
-#
-#             # Якщо товару немає в каталозі взагалі, ставимо 0
-#             stock_value = stock_res if stock_res is not None else 0
-#
-#             # Використовуємо RETURNING quantity, щоб отримати фінальну кількість після UPSERT
-#             query = text("""
-#                 INSERT INTO cart_items (user_id, supplier_id, code, brand, name, quantity, price_eur)
-#                 VALUES (:u_id, :s_id, :code, :brand, :name, :qty, :price)
-#                 ON CONFLICT (user_id, supplier_id, code)
-#                 DO UPDATE SET
-#                     quantity = cart_items.quantity + EXCLUDED.quantity,
-#                     price_eur = EXCLUDED.price_eur,
-#                     created_at = NOW()
-#                 RETURNING quantity;
-#             """)
-#
-#             result = conn.execute(query, {
-#                 "u_id": item.user_id,
-#                 "s_id": item.supplier_id,
-#                 "code": item.code,
-#                 "brand": item.brand,
-#                 "name": item.name,
-#                 "qty": item.quantity,
-#                 "price": item.price_eur
-#             })
-#
-#             # Отримуємо нове значення кількості
-#             new_quantity = result.scalar()
-#             conn.commit()
-#
-#         return {
-#             "status": "success",
-#             "message": "Кошик оновлено",
-#             "new_quantity": new_quantity,
-#             "stock": stock_value  # <--- ДОДАЄМО ЦЕЙ РЯДОК
-#         }
-#     except Exception as e:
-#         print(f"Cart POST Error: {e}")
-#         raise HTTPException(status_code=500, detail="Помилка при додаванні в кошик")
-
 @router.post("/")
 async def add_to_cart(item: CartItemIn):
     try:
         with engine.connect() as conn:
-            # ОДИН запит, який робить ВСЕ: і запис (UPSERT), і витяг залишку (STOCK)
+            # ОДИН запит: робить запис/оновлення та повертає сток саме цього бренду
             query = text("""
                 WITH upserted AS (
                     INSERT INTO cart_items (user_id, supplier_id, code, brand, name, quantity, price_eur)
                     VALUES (:u_id, :s_id, :code, :brand, :name, :qty, :price)
-                    ON CONFLICT (user_id, supplier_id, code) 
+                    ON CONFLICT (user_id, supplier_id, code, brand) -- ДОДАЛИ brand
                     DO UPDATE SET 
                         quantity = cart_items.quantity + EXCLUDED.quantity,
                         price_eur = EXCLUDED.price_eur,
@@ -136,11 +84,13 @@ async def add_to_cart(item: CartItemIn):
                     RETURNING quantity
                 )
                 SELECT 
-                    (SELECT quantity FROM upserted) as new_quantity,
-                    (SELECT stock FROM product_catalog WHERE code = :code AND supplier_id = :s_id) as stock;
+                    (SELECT quantity FROM upserted LIMIT 1) as new_quantity,
+                    (SELECT stock FROM product_catalog 
+                     WHERE code = :code AND supplier_id = :s_id AND brand = :brand 
+                     LIMIT 1) as stock; -- ДОДАЛИ brand та LIMIT 1
             """)
 
-            # Виконуємо запит і отримуємо результат як мапу (dictionary-like)
+            # Виконуємо запит
             result = conn.execute(query, {
                 "u_id": item.user_id,
                 "s_id": item.supplier_id,
@@ -153,7 +103,7 @@ async def add_to_cart(item: CartItemIn):
 
             conn.commit()
 
-        # Якщо товару немає в каталозі, stock буде None, перетворюємо в 0
+        # Безпечно витягуємо дані
         stock_value = result["stock"] if result["stock"] is not None else 0
         new_qty = result["new_quantity"]
 
@@ -165,8 +115,9 @@ async def add_to_cart(item: CartItemIn):
         }
     except Exception as e:
         print(f"Cart POST Error: {e}")
-        # Виводимо конкретну помилку в консоль, щоб легше було дебажити
+        # Повертаємо текст помилки, щоб ти бачив її в Network браузера
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # --- 2. ОТРИМАННЯ КОШИКА (ДЛЯ СТОРІНКИ КОШИКА) ---
 @router.get("/{user_id}")
