@@ -76,7 +76,7 @@ async def add_to_cart(item: CartItemIn):
             query = text("""
                 INSERT INTO cart_items (user_id, supplier_id, code, brand, name, quantity, price_eur)
                 VALUES (:u_id, :s_id, :code, :brand, :name, :qty, :price)
-                ON CONFLICT (user_id, supplier_id, code) 
+                ON CONFLICT (user_id, supplier_id, code, brand) 
                 DO UPDATE SET 
                     quantity = cart_items.quantity + EXCLUDED.quantity,
                     price_eur = EXCLUDED.price_eur,
