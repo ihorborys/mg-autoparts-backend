@@ -111,15 +111,32 @@ async def add_to_cart(item: CartItemIn):
 # --- 2. ОТРИМАННЯ КОШИКА (ДЛЯ СТОРІНКИ КОШИКА) ---
 @router.get("/{user_id}")
 async def get_cart(user_id: str):
+    # try:
+    #     with engine.connect() as conn:
+    #         # Отримуємо всі товари юзера, сортуємо за часом додавання (нові зверху)
+    #         query = text("""
+    #             SELECT id, supplier_id, code, brand, name, quantity, price_eur, created_at
+    #             FROM cart_items
+    #             WHERE user_id = :u_id
+    #             ORDER BY created_at DESC
+    #         """)
+    #
+    #         rows = conn.execute(query, {"u_id": user_id})
+    #         items = [dict(row._mapping) for row in rows]
+
     try:
         with engine.connect() as conn:
-            # Отримуємо всі товари юзера, сортуємо за часом додавання (нові зверху)
+            # Ми додаємо JOIN, щоб "підклеїти" сток з таблиці продуктів
             query = text("""
-                SELECT id, supplier_id, code, brand, name, quantity, price_eur, created_at
-                FROM cart_items
-                WHERE user_id = :u_id
-                ORDER BY created_at DESC
-            """)
+                    SELECT 
+                        c.id, c.supplier_id, c.code, c.brand, c.name, 
+                        c.quantity, c.price_eur, c.created_at,
+                        p.stock -- ОСЬ ВІН! Беремо актуальний залишок
+                    FROM cart_items c
+                    LEFT JOIN product_catalog p ON c.code = p.code AND c.brand = p.brand
+                    WHERE c.user_id = :u_id
+                    ORDER BY c.created_at DESC
+                """)
 
             rows = conn.execute(query, {"u_id": user_id})
             items = [dict(row._mapping) for row in rows]
