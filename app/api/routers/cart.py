@@ -126,17 +126,51 @@ async def get_cart(user_id: str):
 
     try:
         with engine.connect() as conn:
-            # Ми додаємо JOIN, щоб "підклеїти" сток з таблиці продуктів
+            # # Ми додаємо JOIN, щоб "підклеїти" сток з таблиці продуктів
+            # query = text("""
+            #         SELECT
+            #             c.id, c.supplier_id, c.code, c.brand, c.name,
+            #             c.quantity, c.price_eur, c.created_at,
+            #             p.stock -- ОСЬ ВІН! Беремо актуальний залишок
+            #         FROM cart_items c
+            #         LEFT JOIN product_catalog p ON c.code = p.code AND c.brand = p.brand
+            #         WHERE c.user_id = :u_id
+            #         ORDER BY c.created_at DESC
+            #     """)
+
+            # query = text("""
+            #     SELECT
+            #         c.id,
+            #         c.supplier_id,
+            #         c.code,
+            #         c.brand,
+            #         c.name,
+            #         c.quantity,
+            #         c.price_eur,
+            #         c.created_at,
+            #         p.stock -- Тепер підтягується миттєво
+            #     FROM cart_items c
+            #     LEFT JOIN product_catalog p ON
+            #         c.code = p.code AND
+            #         c.brand = p.brand AND
+            #         c.supplier_id = p.supplier_id -- ТРЕТІЙ КЛЮЧ: прибирає дублікати та вмикає індекс
+            #     WHERE c.user_id = :u_id
+            #     ORDER BY c.created_at DESC
+            # """)
+
             query = text("""
-                    SELECT 
-                        c.id, c.supplier_id, c.code, c.brand, c.name, 
-                        c.quantity, c.price_eur, c.created_at,
-                        p.stock -- ОСЬ ВІН! Беремо актуальний залишок
-                    FROM cart_items c
-                    LEFT JOIN product_catalog p ON c.code = p.code AND c.brand = p.brand
-                    WHERE c.user_id = :u_id
-                    ORDER BY c.created_at DESC
-                """)
+                SELECT 
+                    c.id, c.supplier_id, c.code, c.brand, c.name, 
+                    c.quantity, c.price_eur, c.created_at,
+                    p.stock 
+                FROM cart_items c
+                LEFT JOIN product_catalog p ON 
+                    p.code_norm = UPPER(REGEXP_REPLACE(c.code, '[^A-Za-z0-9]', '', 'g')) AND 
+                    p.brand_norm = UPPER(REGEXP_REPLACE(c.brand, '[^A-Za-z0-9]', '', 'g')) AND 
+                    p.supplier_id = c.supplier_id
+                WHERE c.user_id = :u_id
+                ORDER BY c.created_at DESC
+            """)
 
             rows = conn.execute(query, {"u_id": user_id})
             items = [dict(row._mapping) for row in rows]
