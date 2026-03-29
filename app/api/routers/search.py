@@ -51,7 +51,7 @@ def search_products(
                 sql_query = text("""
                     SELECT supplier_id, code, unicode, brand, name, stock, price_eur
                     FROM product_catalog
-                    WHERE 
+                    WHERE
                         (brand_norm LIKE :w1_p AND (code_norm LIKE :w2_p OR unicode_norm LIKE :w2_p))
                         OR
                         (brand_norm LIKE :w2_p AND (code_norm LIKE :w1_p OR unicode_norm LIKE :w1_p))
@@ -80,6 +80,59 @@ def search_products(
                         price_eur ASC                                       -- 3. І ТЕПЕР за ціною!
                     LIMIT :limit_val OFFSET :offset_val
                 """)
+                params = {
+                    "q_p": f"{q_clean_full}%",
+                    "q_c": q_clean_full,
+                    "limit_val": limit,
+                    "offset_val": offset
+                }
+
+            #     # UNION ALL змушує PostgreSQL використовувати індекс для кожної умови окремо
+            #     sql_query = text("""
+            #                     SELECT * FROM (
+            #                         (SELECT supplier_id, code, unicode, brand, name, stock, price_eur, code_norm, brand_norm
+            #                          FROM product_catalog
+            #                          WHERE brand_norm LIKE :w1_p AND code_norm LIKE :w2_p LIMIT :limit_val)
+            #                         UNION ALL
+            #                         (SELECT supplier_id, code, unicode, brand, name, stock, price_eur, code_norm, brand_norm
+            #                          FROM product_catalog
+            #                          WHERE brand_norm LIKE :w2_p AND code_norm LIKE :w1_p LIMIT :limit_val)
+            #                         UNION ALL
+            #                         (SELECT supplier_id, code, unicode, brand, name, stock, price_eur, code_norm, brand_norm
+            #                          FROM product_catalog
+            #                          WHERE code_norm = :full OR unicode_norm = :full LIMIT :limit_val)
+            #                     ) as combined
+            #                     ORDER BY (stock > 0) DESC, price_eur ASC
+            #                     LIMIT :limit_val OFFSET :offset_val
+            #                 """)
+            #     params = {
+            #         "w1_p": f"{w1}%",
+            #         "w2_p": f"{w2}%",
+            #         "full": q_clean_full,
+            #         "limit_val": limit,
+            #         "offset_val": offset
+            #     }
+            #
+            #     # --- СЦЕНАРІЙ Б: Одне слово (напр. "GDB1330") ---
+            # else:
+            #     # --- СЦЕНАРІЙ Б: Одне слово (напр. "GDB1330") ---
+            #     sql_query = text("""
+            #         SELECT * FROM (
+            #             (SELECT supplier_id, code, unicode, brand, name, stock, price_eur, code_norm, brand_norm, unicode_norm
+            #              FROM product_catalog WHERE code_norm LIKE :q_p LIMIT :limit_val)
+            #             UNION ALL
+            #             (SELECT supplier_id, code, unicode, brand, name, stock, price_eur, code_norm, brand_norm, unicode_norm
+            #              FROM product_catalog WHERE unicode_norm LIKE :q_p LIMIT :limit_val)
+            #             UNION ALL
+            #             (SELECT supplier_id, code, unicode, brand, name, stock, price_eur, code_norm, brand_norm, unicode_norm
+            #              FROM product_catalog WHERE brand_norm LIKE :q_p LIMIT :limit_val)
+            #         ) as combined
+            #         ORDER BY
+            #             (stock > 0) DESC,
+            #             (code_norm = :q_c OR unicode_norm = :q_c) DESC,
+            #             price_eur ASC
+            #         LIMIT :limit_val OFFSET :offset_val
+            #     """)
                 params = {
                     "q_p": f"{q_clean_full}%",
                     "q_c": q_clean_full,
