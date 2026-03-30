@@ -27,7 +27,7 @@ _last_updated = 0
 CACHE_DURATION = 3600  # 1 година (в секундах)
 
 
-def get_eur_to_uah(add_uah=1, min_rate=49, fallback=50, timeout=5) -> float:
+def get_eur_to_uah(add_uah=1, min_rate=50, fallback=52, timeout=5) -> float:
     global _cached_rate, _last_updated
 
     current_time = time.time()
