@@ -162,7 +162,7 @@ async def get_cart(user_id: str):
                 SELECT 
                     c.id, c.supplier_id, c.code, c.brand, c.name, 
                     c.quantity, c.price_eur, c.created_at,
-                    COALESCE(p.stock, 0) as stock
+                    p.stock 
                 FROM cart_items c
                 LEFT JOIN product_catalog p ON 
                     p.code_norm = UPPER(REGEXP_REPLACE(c.code, '[^A-Za-z0-9]', '', 'g')) AND 
