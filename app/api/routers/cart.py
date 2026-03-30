@@ -1,53 +1,3 @@
-# from fastapi import APIRouter, HTTPException
-# from pydantic import BaseModel
-# from sqlalchemy import text
-# from app.database import engine  # Перевір, чи шлях до engine правильний
-#
-# router = APIRouter()  # Префікс /cart ми вже додали в main.py
-#
-#
-# class CartItemIn(BaseModel):
-#     user_id: str
-#     supplier_id: int
-#     code: str
-#     brand: str
-#     name: str
-#     quantity: int
-#     price_eur: float
-#
-#
-# @router.post("/")
-# async def add_to_cart(item: CartItemIn):
-#     try:
-#         with engine.connect() as conn:
-#             # Магія UPSERT: один запит для додавання або оновлення
-#             query = text("""
-#                 INSERT INTO cart_items (user_id, supplier_id, code, brand, name, quantity, price_eur)
-#                 VALUES (:u_id, :s_id, :code, :brand, :name, :qty, :price)
-#                 ON CONFLICT (user_id, supplier_id, code)
-#                 DO UPDATE SET
-#                     quantity = cart_items.quantity + EXCLUDED.quantity,
-#                     price_eur = EXCLUDED.price_eur,
-#                     created_at = NOW()
-#                 RETURNING quantity;
-#             """)
-#
-#             conn.execute(query, {
-#                 "u_id": item.user_id,
-#                 "s_id": item.supplier_id,
-#                 "code": item.code,
-#                 "brand": item.brand,
-#                 "name": item.name,
-#                 "qty": item.quantity,
-#                 "price": item.price_eur
-#             })
-#             conn.commit()
-#
-#         return {"status": "success", "message": "Item updated in cart"}
-#     except Exception as e:
-#         print(f"Cart Error: {e}")
-#         raise HTTPException(status_code=500, detail="Internal Server Error")
-
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import text
@@ -111,58 +61,13 @@ async def add_to_cart(item: CartItemIn):
 # --- 2. ОТРИМАННЯ КОШИКА (ДЛЯ СТОРІНКИ КОШИКА) ---
 @router.get("/{user_id}")
 async def get_cart(user_id: str):
-    # try:
-    #     with engine.connect() as conn:
-    #         # Отримуємо всі товари юзера, сортуємо за часом додавання (нові зверху)
-    #         query = text("""
-    #             SELECT id, supplier_id, code, brand, name, quantity, price_eur, created_at
-    #             FROM cart_items
-    #             WHERE user_id = :u_id
-    #             ORDER BY created_at DESC
-    #         """)
-    #
-    #         rows = conn.execute(query, {"u_id": user_id})
-    #         items = [dict(row._mapping) for row in rows]
-
     try:
         with engine.connect() as conn:
-            # # Ми додаємо JOIN, щоб "підклеїти" сток з таблиці продуктів
-            # query = text("""
-            #         SELECT
-            #             c.id, c.supplier_id, c.code, c.brand, c.name,
-            #             c.quantity, c.price_eur, c.created_at,
-            #             p.stock -- ОСЬ ВІН! Беремо актуальний залишок
-            #         FROM cart_items c
-            #         LEFT JOIN product_catalog p ON c.code = p.code AND c.brand = p.brand
-            #         WHERE c.user_id = :u_id
-            #         ORDER BY c.created_at DESC
-            #     """)
-
-            # query = text("""
-            #     SELECT
-            #         c.id,
-            #         c.supplier_id,
-            #         c.code,
-            #         c.brand,
-            #         c.name,
-            #         c.quantity,
-            #         c.price_eur,
-            #         c.created_at,
-            #         p.stock -- Тепер підтягується миттєво
-            #     FROM cart_items c
-            #     LEFT JOIN product_catalog p ON
-            #         c.code = p.code AND
-            #         c.brand = p.brand AND
-            #         c.supplier_id = p.supplier_id -- ТРЕТІЙ КЛЮЧ: прибирає дублікати та вмикає індекс
-            #     WHERE c.user_id = :u_id
-            #     ORDER BY c.created_at DESC
-            # """)
-
             query = text("""
                 SELECT 
                     c.id, c.supplier_id, c.code, c.brand, c.name, 
                     c.quantity, c.price_eur, c.created_at,
-                    p.stock 
+                    COALESCE(p.stock, 0) as stock
                 FROM cart_items c
                 LEFT JOIN product_catalog p ON 
                     p.code_norm = UPPER(REGEXP_REPLACE(c.code, '[^A-Za-z0-9]', '', 'g')) AND 
