@@ -10,6 +10,7 @@ router = APIRouter()
 # Модель для вхідних даних (додавання в кошик)
 class CartItemIn(BaseModel):
     user_id: str
+    product_id: int
     supplier_id: int
     code: str
     brand: str
@@ -25,18 +26,20 @@ async def add_to_cart(item: CartItemIn):
         with engine.connect() as conn:
             # Використовуємо RETURNING quantity, щоб отримати фінальну кількість після UPSERT
             query = text(f"""
-                INSERT INTO {TABLE_CART} (user_id, supplier_id, code, brand, name, quantity, price_eur)
-                VALUES (:u_id, :s_id, :code, :brand, :name, :qty, :price)
+                INSERT INTO {TABLE_CART} (user_id, product_id, supplier_id, code, brand, name, quantity, price_eur)
+                VALUES (:u_id, :p_id, :s_id, :code, :brand, :name, :qty, :price)
                 ON CONFLICT (user_id, supplier_id, code, brand) 
                 DO UPDATE SET 
                     quantity = {TABLE_CART}.quantity + EXCLUDED.quantity,
                     price_eur = EXCLUDED.price_eur,
+                    product_id = EXCLUDED.product_id,
                     created_at = NOW()
                 RETURNING quantity;
             """)
 
             result = conn.execute(query, {
                 "u_id": item.user_id,
+                "p_id": item.product_id,  # <--- ПЕРЕДАЄМО ЧИСЛО
                 "s_id": item.supplier_id,
                 "code": item.code,
                 "brand": item.brand,
@@ -66,14 +69,18 @@ async def get_cart(user_id: str):
         with engine.connect() as conn:
             query = text(f"""
                 SELECT 
-                    c.id, c.supplier_id, c.code, c.brand, c.name, 
-                    c.quantity, c.price_eur, c.created_at,
+                    c.id, 
+                    c.product_id,     
+                    c.supplier_id, 
+                    c.code, 
+                    c.brand, 
+                    c.name, 
+                    c.quantity, 
+                    c.price_eur, 
+                    c.created_at,
                     COALESCE(p.stock, 0) as stock
                 FROM {TABLE_CART} c
-                LEFT JOIN {TABLE_CATALOG} p ON 
-                    p.code_norm = UPPER(REGEXP_REPLACE(c.code, '[^A-Za-z0-9]', '', 'g')) AND 
-                    p.brand_norm = UPPER(REGEXP_REPLACE(c.brand, '[^A-Za-z0-9]', '', 'g')) AND 
-                    p.supplier_id = c.supplier_id
+                LEFT JOIN {TABLE_CATALOG} p ON p.id = c.product_id
                 WHERE c.user_id = :u_id
                 ORDER BY c.created_at DESC
             """)
