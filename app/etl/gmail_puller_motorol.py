@@ -6,6 +6,7 @@ Gmail puller для MOTOROL:
 - прибирає всі тимчасові файли у data/temp (залишає лише state/)
 """
 from __future__ import annotations
+import os
 import base64
 import json
 import shutil
@@ -16,17 +17,17 @@ from dotenv import load_dotenv
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-
 from app.services.paths import TEMP_DIR
 from .price_manager import process_all_prices
 
-# ---------- Налаштування ----------
+# ---------- Налаштування (беремо з .env) ----------
 PROCESS_ONLY_LATEST = True
-REQUIRED_FILENAME = "09033.cennik.zip"
-GMAIL_QUERY = 'has:attachment filename:09033.cennik.zip'
+
+# Використовуємо змінні з оточення
+REQUIRED_FILENAME = os.getenv("MOTOROL_FILENAME", "09033.cennik.zip")
+GMAIL_QUERY = os.getenv("MOTOROL_GMAIL_QUERY", f"has:attachment filename:{REQUIRED_FILENAME}")
+MOTOROL_SUPPLIER_ID = int(os.getenv("MOTOROL_SUPPLIER_ID", 3))
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
-# ВАЖЛИВО: ID постачальника MOTOROL у вашій базі
-MOTOROL_SUPPLIER_ID = 3
 
 # Шляхи
 TMP_DIR = TEMP_DIR

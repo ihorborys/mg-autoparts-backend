@@ -30,6 +30,15 @@ engine = create_engine(
     max_overflow=20
 )
 
+# --- 🎯 НОВИЙ БЛОК: НАЗВИ ТАБЛИЦЬ ---
+# Тепер це "єдине джерело істини" для всього бекенду
+TABLE_CATALOG = os.getenv("DB_TABLE_CATALOG", "product_catalog")
+TABLE_ORDERS = os.getenv("DB_TABLE_ORDERS", "orders")
+TABLE_ORDER_ITEMS = os.getenv("DB_TABLE_ORDER_ITEMS", "order_items")
+TABLE_CART = os.getenv("DB_TABLE_CART", "cart_items")
+TABLE_PROFILES = os.getenv("DB_TABLE_PROFILES", "profiles")
+# ------------------------------------
+
 # # 4. Функція створення таблиць (щоб не робити руками в Supabase)
 # def init_db():
 #     query = text("""
