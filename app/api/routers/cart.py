@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import text
-from app.database import engine
+# Імпортуємо наші змінні назв таблиць
+from app.database import engine, TABLE_CART, TABLE_CATALOG
 
 router = APIRouter()
 
@@ -23,12 +24,12 @@ async def add_to_cart(item: CartItemIn):
     try:
         with engine.connect() as conn:
             # Використовуємо RETURNING quantity, щоб отримати фінальну кількість після UPSERT
-            query = text("""
-                INSERT INTO cart_items (user_id, supplier_id, code, brand, name, quantity, price_eur)
+            query = text(f"""
+                INSERT INTO {TABLE_CART} (user_id, supplier_id, code, brand, name, quantity, price_eur)
                 VALUES (:u_id, :s_id, :code, :brand, :name, :qty, :price)
                 ON CONFLICT (user_id, supplier_id, code, brand) 
                 DO UPDATE SET 
-                    quantity = cart_items.quantity + EXCLUDED.quantity,
+                    quantity = {TABLE_CART}.quantity + EXCLUDED.quantity,
                     price_eur = EXCLUDED.price_eur,
                     created_at = NOW()
                 RETURNING quantity;
@@ -63,13 +64,13 @@ async def add_to_cart(item: CartItemIn):
 async def get_cart(user_id: str):
     try:
         with engine.connect() as conn:
-            query = text("""
+            query = text(f"""
                 SELECT 
                     c.id, c.supplier_id, c.code, c.brand, c.name, 
                     c.quantity, c.price_eur, c.created_at,
                     COALESCE(p.stock, 0) as stock
-                FROM cart_items c
-                LEFT JOIN product_catalog p ON 
+                FROM {TABLE_CART} c
+                LEFT JOIN {TABLE_CATALOG} p ON 
                     p.code_norm = UPPER(REGEXP_REPLACE(c.code, '[^A-Za-z0-9]', '', 'g')) AND 
                     p.brand_norm = UPPER(REGEXP_REPLACE(c.brand, '[^A-Za-z0-9]', '', 'g')) AND 
                     p.supplier_id = c.supplier_id
@@ -103,8 +104,8 @@ async def update_quantity(user_id: str, supplier_id: int, code: str, quantity: i
 
     try:
         with engine.connect() as conn:
-            query = text("""
-                UPDATE cart_items 
+            query = text(f"""
+                UPDATE {TABLE_CART} 
                 SET quantity = :qty, created_at = NOW()
                 WHERE user_id = :u_id AND supplier_id = :s_id AND code = :code
             """)
@@ -121,8 +122,8 @@ async def update_quantity(user_id: str, supplier_id: int, code: str, quantity: i
 async def remove_item(user_id: str, supplier_id: int, code: str):
     try:
         with engine.connect() as conn:
-            query = text("""
-                DELETE FROM cart_items 
+            query = text(f"""
+                DELETE FROM {TABLE_CART} 
                 WHERE user_id = :u_id AND supplier_id = :s_id AND code = :code
             """)
             conn.execute(query, {"u_id": user_id, "s_id": supplier_id, "code": code})
@@ -138,7 +139,7 @@ async def remove_item(user_id: str, supplier_id: int, code: str):
 async def clear_cart(user_id: str):
     try:
         with engine.connect() as conn:
-            query = text("DELETE FROM cart_items WHERE user_id = :u_id")
+            query = text(f"DELETE FROM {TABLE_CART} WHERE user_id = :u_id")
             conn.execute(query, {"u_id": user_id})
             conn.commit()
         return {"status": "success", "message": "Кошик очищено"}

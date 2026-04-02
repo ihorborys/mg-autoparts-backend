@@ -4,8 +4,8 @@ from fastapi import APIRouter, Query, HTTPException, Response
 from typing import List, Dict, Any
 from sqlalchemy import text
 
-# ІМПОРТУЄМО ENGINE З НАШОГО НОВОГО ФАЙЛУ
-from app.database import engine
+# ІМПОРТУЄМО ENGINE ТА НАЗВУ ТАБЛИЦІ
+from app.database import engine, TABLE_CATALOG
 
 router = APIRouter()
 
@@ -48,9 +48,9 @@ def search_products(
                 w2 = clean_val("".join(words[1:]))
                 full_combined = clean_val("".join(words))
 
-                sql_query = text("""
+                sql_query = text(f"""
                     SELECT supplier_id, code, unicode, brand, name, stock, price_eur
-                    FROM product_catalog
+                    FROM {TABLE_CATALOG}
                     WHERE
                         (brand_norm LIKE :w1_p AND (code_norm LIKE :w2_p OR unicode_norm LIKE :w2_p))
                         OR
@@ -70,9 +70,9 @@ def search_products(
 
             # СЦЕНАРІЙ Б: Одне слово (напр. "GDB1330")
             else:
-                sql_query = text("""
+                sql_query = text(f"""
                     SELECT supplier_id, code, unicode, brand, name, stock, price_eur
-                    FROM product_catalog
+                    FROM {TABLE_CATALOG}
                     WHERE unicode_norm LIKE :q_p OR code_norm LIKE :q_p OR brand_norm LIKE :q_p
                     ORDER BY
                         (stock > 0) DESC,                                   -- 1. Спочатку те, що є в наявності
