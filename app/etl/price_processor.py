@@ -530,21 +530,28 @@ def process_one_price(
 
             # --- ВИКОНАННЯ ТРАНЗАКЦІЇ ---
             with engine.begin() as conn:
-                # КРОК А: Створюємо тимчасову таблицю (копію структури основної)
+                # КРОК 0: Видаляємо стару тимчасову таблицю, якщо вона залишилася з минулого кола
+                conn.execute(text("DROP TABLE IF EXISTS temp_import"))
+
+                # КРОК А: Створюємо нову тимчасову таблицю
                 conn.execute(text(f"CREATE TEMP TABLE temp_import (LIKE {TABLE_CATALOG} INCLUDING ALL)"))
 
                 # КРОК Б: Швидко заливаємо дані в temp_import
+                # (Не забудь про перейменування ціни, якщо ще не зробив)
+                if "price" in out_df_db.columns:
+                    out_df_db = out_df_db.rename(columns={"price": "price_eur"})
+
                 out_df_db.to_sql('temp_import', con=conn, if_exists='append', index=False)
 
                 # КРОК В: UPSERT (Зберігаємо старі ID, оновлюємо ціну та сток)
                 # Поле name поки не оновлюємо (як ти й хотів), щоб не лаялося на відсутність колонки
                 conn.execute(text(f"""
-                        INSERT INTO {TABLE_CATALOG} (brand, code, unicode, stock, price, supplier_id, brand_norm, code_norm, unicode_norm)
-                        SELECT brand, code, unicode, stock, price, supplier_id, brand_norm, code_norm, unicode_norm 
+                        INSERT INTO {TABLE_CATALOG} (brand, code, unicode, name, stock, price_eur, supplier_id, brand_norm, code_norm, unicode_norm)
+                        SELECT brand, code, unicode, name, stock, price_eur, supplier_id, brand_norm, code_norm, unicode_norm 
                         FROM temp_import
                         ON CONFLICT (brand_norm, code_norm, supplier_id) 
                         DO UPDATE SET 
-                            price = EXCLUDED.price,
+                            price_eur = EXCLUDED.price_eur,
                             stock = EXCLUDED.stock;
                     """))
 
