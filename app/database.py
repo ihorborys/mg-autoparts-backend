@@ -32,7 +32,7 @@ engine = create_engine(
 
 # --- 🎯 НОВИЙ БЛОК: НАЗВИ ТАБЛИЦЬ ---
 # Тепер це "єдине джерело істини" для всього бекенду
-TABLE_CATALOG = os.getenv("DB_TABLE_CATALOG", "product_catalog")
+TABLE_CATALOG = os.getenv("DB_TABLE_CATALOG", "products")
 TABLE_ORDERS = os.getenv("DB_TABLE_ORDERS", "orders")
 TABLE_ORDER_ITEMS = os.getenv("DB_TABLE_ORDER_ITEMS", "order_items")
 TABLE_CART = os.getenv("DB_TABLE_CART", "cart_items")
