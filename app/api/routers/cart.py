@@ -1,8 +1,11 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 from sqlalchemy import text
 # Імпортуємо наші змінні назв таблиць
 from app.database import engine, TABLE_CART, TABLE_CATALOG
+from app.services.email_service import EmailService # Імпортуємо наш новий сервіс
+from pydantic import BaseModel
+
+
 
 router = APIRouter()
 
@@ -153,3 +156,33 @@ async def clear_cart(user_id: str):
     except Exception as e:
         print(f"Cart CLEAR Error: {e}")
         raise HTTPException(status_code=500, detail="Не вдалося очистити кошик")
+
+
+# Модель для валідації (можна винести в окремий файл models.py або лишити тут)
+class OrderSchema(BaseModel):
+    order_id: str
+    user_name: str
+    user_email: str
+    user_phone: str
+    delivery_info: str
+    total_price: float
+    items: list
+
+
+# --- 6. ОФОРМЛЕННЯ ЗАМОВЛЕННЯ ТА ОЧИЩЕННЯ КОШИКА ---
+@router.post("/checkout")
+async def checkout(order: OrderSchema):  # Використовуємо схему замість dict
+    # Тепер FastAPI знає, що всередині 'order' є id, name та ціна.
+
+    # 1. Твоя логіка збереження замовлення в БД (якщо вона тут є)
+    # ...
+
+    # 2. Відправка сповіщення
+    # Передаємо дані у сервіс як словник через .dict()
+    email_sent = EmailService.send_order_confirmation(order.dict())
+
+    return {
+        "status": "success",
+        "order_id": order.order_id,
+        "email_notified": email_sent
+    }
