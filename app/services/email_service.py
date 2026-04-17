@@ -69,7 +69,7 @@ class EmailService:
                 items_html += f"""
                 <tr style="border-bottom: 1px solid #eeeeee;">
                     <td style="padding: 12px; font-family: verdana, geneva, sans-serif; font-size: 14px;">
-                        {item.get('brand')}<strong>{item.get('code')}</strong><br/>
+                        {item.get('brand')} <strong>{item.get('code')}</strong><br/>
                         <span style="font-size: 10px; color: #666;">{item.get('name')}</span><br/>
                         <span style="font-size: 8px; color: #666;">Склад: <strong>{supplier_name}</strong></span>
                     </td>
