@@ -166,8 +166,8 @@ class OrderSchema(BaseModel):
     user_phone: str
     delivery_info: str
     total_price: float
-    items: list
-
+    total_price_uah: float  # Основна сума для листа
+    items: list[dict]  # В середині цих dict тепер буде price_uah
 
 # --- 6. ОФОРМЛЕННЯ ЗАМОВЛЕННЯ ТА ОЧИЩЕННЯ КОШИКА ---
 @router.post("/checkout")
