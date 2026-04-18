@@ -261,7 +261,6 @@ class EmailService:
                     <div style="margin-top: 25px; text-align: right; font-size: 18px; font-weight: bold;">
                         Разом до сплати: <span style="color: #d32f2f;">{total_uah_final} грн.</span>
                     </div>
-                    <p style="font-size: 10px; color: #999; text-align: right; margin-top: 10px;">* Курс замовлення: {order_rate} грн/EUR</p>
 
                     <div style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 20px;">
                         <p style="font-size: 11px; font-weight: bold; margin-bottom: 10px;">КОНТАКТИ:</p>
