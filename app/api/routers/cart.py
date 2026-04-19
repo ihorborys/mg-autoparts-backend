@@ -166,7 +166,7 @@ class OrderSchema(BaseModel):
     user_phone: str
     delivery_info: str
     total_price: float
-    total_price_uah: float  # Основна сума для листа
+    total_price_uah: int  # Основна сума для листа
     items: list[dict]  # В середині цих dict тепер буде price_uah
 
 # --- 6. ОФОРМЛЕННЯ ЗАМОВЛЕННЯ ТА ОЧИЩЕННЯ КОШИКА ---
