@@ -77,7 +77,7 @@ class EmailService:
                 <div style="max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; padding: 25px; border-radius: 10px;">
                     <div style="text-align: center; border-bottom: 2px solid #d32f2f; padding-bottom: 10px; margin-bottom: 20px;">
                         <a href="https://maxgear.com.ua" target="_blank" rel="noopener">
-                            <img src="https://pub-fcf51cc33cf647358f319200a346cc52.r2.dev/images/maxgear_logo.png" width="200" alt="">
+                            <img src="https://pub-fcf51cc33cf647358f319200a346cc52.r2.dev/images/maxgear_logo.jpg" width="200" alt="">
                         </a>
                     </div>
 
