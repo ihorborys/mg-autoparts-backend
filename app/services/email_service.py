@@ -116,7 +116,7 @@ class EmailService:
 
                     <p style="text-align: left; margin: 30px 0 0 0;">
                         <a style="text-decoration: none;" href="https://maxgear.com.ua" target="_blank" rel="noopener">
-                            <img src="https://pub-fcf51cc33cf647358f319200a346cc52.r2.dev/images/maxgear_logo.png" alt="MaxGear Logo" width="100">
+                            <img src="https://pub-fcf51cc33cf647358f319200a346cc52.r2.dev/images/images_maxgear_logo.jpg" alt="MaxGear Logo" width="100">
                         </a>
                     </p>
                     <p style="color: #999999; text-align: center; font-size: 8pt; margin-top: 30px;">
