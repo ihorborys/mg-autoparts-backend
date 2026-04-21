@@ -44,7 +44,7 @@ class EmailService:
 
             # 1. Створюємо зрозумілу назву для способу оплати
             raw_payment = order_data.get('payment_method', 'cod')
-            payment_text = "при отриманні" if raw_payment == 'cod' else "на карту"
+            payment_text = "при отриманні" if raw_payment == 'cod' else "на картку"
 
             # order_rate = order_data.get('order_rate', 'фіксований')  # Беремо курс з фронта
 
