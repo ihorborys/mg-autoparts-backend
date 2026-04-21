@@ -38,6 +38,7 @@ class EmailService:
             user_name = order_data.get('user_name', 'Клієнт')
             user_phone = order_data.get('user_phone', 'Не вказано')
             delivery_info = order_data.get('delivery_info', 'Не вказано')
+            payment_method = order_data.get('payment_method', 'Не вказано')
 
             # Чисті ціни (FastAPI вже перевірив їх через Pydantic)
             total_uah = int(order_data.get('total_price_uah', 0))
@@ -87,6 +88,7 @@ class EmailService:
                     <div style="background: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
                         <p style="margin: 5px 0;">Телефон: <strong>{user_phone}</strong></p>
                         <p style="margin: 5px 0;">Доставка: <strong>{delivery_info}</strong></p>
+                        <p style="margin: 5px 0;">Доставка: <strong>{payment_method}</strong></p>
                     </div>
 
                     <table style="width: 100%; border-collapse: collapse;">
