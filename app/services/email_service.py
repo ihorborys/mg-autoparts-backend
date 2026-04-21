@@ -77,7 +77,7 @@ class EmailService:
                 <div style="max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; padding: 25px; border-radius: 10px;">
                     <div style="text-align: center; border-bottom: 2px solid #d32f2f; padding-bottom: 10px; margin-bottom: 20px;">
                         <a href="https://maxgear.com.ua" target="_blank" rel="noopener">
-                            <img src="https://pub-fcf51cc33cf647358f319200a346cc52.r2.dev/images/maxgear_logo.png" style="background-color: #ffffff; border-radius: 4px; padding: 5px;" width="200px" alt="">
+                            <img src="https://pub-fcf51cc33cf647358f319200a346cc52.r2.dev/images/maxgear_logo.png" style="background-color: #f9f9f9; border-radius: 4px; padding: 5px;" width="200px" alt="">
                         </a>
                     </div>
 
@@ -116,7 +116,7 @@ class EmailService:
 
                     <p style="text-align: left; margin: 30px 0 0 0;">
                         <a style="text-decoration: none;" href="https://maxgear.com.ua" target="_blank" rel="noopener">
-                            <img src="https://pub-fcf51cc33cf647358f319200a346cc52.r2.dev/images/maxgear_logo.png" style="background-color: #ffffff; border-radius: 4px; padding: 5px;" alt="MaxGear Logo" width="100">
+                            <img src="https://pub-fcf51cc33cf647358f319200a346cc52.r2.dev/images/maxgear_logo.png" style="background-color: #f9f9f9; border-radius: 4px; padding: 5px;" alt="MaxGear Logo" width="100">
                         </a>
                     </p>
                     <p style="color: #999999; text-align: center; font-size: 8pt; margin-top: 30px;">
