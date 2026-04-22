@@ -46,11 +46,13 @@ class EmailService:
             # Чисті ціни (FastAPI вже перевірив їх через Pydantic)
             total_uah = int(order_data.get('total_price_uah', 0))
 
-            # notes_html = f'<p style="margin: 5px 0;">Примітка: <strong>{notes}</strong></p>' if notes else ""
+            notes_html = f'<p style="margin: 5px 0;">Примітка: <strong>{notes}</strong></p>' if notes else ""
 
             # 1. Створюємо зрозумілу назву для способу оплати
             raw_payment = order_data.get('payment_method', 'cod')
             payment_text = "при отриманні" if raw_payment == 'cod' else "на картку"
+
+
 
             # order_rate = order_data.get('order_rate', 'фіксований')  # Беремо курс з фронта
 
@@ -99,7 +101,7 @@ class EmailService:
                         <p style="margin: 5px 0;">Телефон: <strong>{user_phone}</strong></p>
                         <p style="margin: 5px 0;">Доставка: <strong>{delivery_info}</strong></p>
                         <p style="margin: 5px 0;">Оплата: <strong>{payment_text}</strong></p>
-                        <p style="margin: 5px 0;">Примітки: <strong>{notes}</strong></p>
+                        {notes_html}
                     </div>
 
                     <table style="width: 100%; border-collapse: collapse;">
