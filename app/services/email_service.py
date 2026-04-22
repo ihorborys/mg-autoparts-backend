@@ -35,12 +35,18 @@ class EmailService:
             # Основні дані з payload
             recipient_email = order_data.get('user_email')
             order_id = order_data.get('order_id')
-            user_name = order_data.get('user_name', 'Клієнт')
+            full_user_name = order_data.get('full_user_name', 'Не вказано')  # Беремо ПІБ
+            first_name = order_data.get('first_name', 'Не вказано')
+            last_name = order_data.get('last_name', 'Не вказано')
             user_phone = order_data.get('user_phone', 'Не вказано')
             delivery_info = order_data.get('delivery_info', 'Не вказано')
+            notes = order_data.get('notes', '')
+
 
             # Чисті ціни (FastAPI вже перевірив їх через Pydantic)
             total_uah = int(order_data.get('total_price_uah', 0))
+
+            notes_html = f'<p style="margin: 5px 0;">Примітка: <strong>{notes}</strong></p>' if notes else ""
 
             # 1. Створюємо зрозумілу назву для способу оплати
             raw_payment = order_data.get('payment_method', 'cod')
@@ -85,13 +91,15 @@ class EmailService:
                         </a>
                     </div>
 
-                    <p style="font-size: 16px;">Вітаємо, <strong>{user_name}</strong>!</p>
+                    <p style="font-size: 16px;">Вітаємо, <strong>{first_name}</strong>!</p>
                     <p style="font-size: 16px;">Дякуємо Вам за замовлення № <strong>{order_id}</strong>. Ми вже почали його обробку.</p>
 
                     <div style="background: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                        <p style="margin: 5px 0;">Отримувач: <strong>{full_user_name}</strong></p>
                         <p style="margin: 5px 0;">Телефон: <strong>{user_phone}</strong></p>
                         <p style="margin: 5px 0;">Доставка: <strong>{delivery_info}</strong></p>
                         <p style="margin: 5px 0;">Оплата: <strong>{payment_text}</strong></p>
+                        {notes_html}
                     </div>
 
                     <table style="width: 100%; border-collapse: collapse;">

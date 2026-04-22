@@ -4,6 +4,7 @@ from sqlalchemy import text
 from app.database import engine, TABLE_CART, TABLE_CATALOG
 from app.services.email_service import EmailService # Імпортуємо наш новий сервіс
 from pydantic import BaseModel
+from typing import Optional
 
 
 
@@ -161,13 +162,16 @@ async def clear_cart(user_id: str):
 # Модель для валідації (можна винести в окремий файл models.py або лишити тут)
 class OrderSchema(BaseModel):
     order_id: str
-    user_name: str
+    full_user_name: str
+    first_name: str
+    last_name: str
     user_email: str
     user_phone: str
     delivery_info: str
     payment_method: str
     total_price_eur: float
     total_price_uah: int  # Основна сума для листа
+    notes: Optional[str] = ""  # Якщо прийде null або нічого, буде порожній рядок
     items: list[dict]  # В середині цих dict тепер буде price_uah
 
 # --- 6. ОФОРМЛЕННЯ ЗАМОВЛЕННЯ ТА ОЧИЩЕННЯ КОШИКА ---
