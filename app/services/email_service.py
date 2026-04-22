@@ -121,7 +121,7 @@ class EmailService:
                         <p style="font-size: 11px; font-weight: bold; margin-bottom: 10px;">КОНТАКТИ:</p>
                         <ul style="list-style: none; padding: 0; font-size: 11px; color: #555;">
                             <li><strong>Телефон:</strong> +38 (097) 013-43-31</li>
-                            <li><strong>Viber / Whatsapp:</strong> +38 (097) 013-43-31</li>
+                            <li><strong>Viber / WhatsApp:</strong> +38 (097) 013-43-31</li>
                             <li><strong>Email:</strong> contact@maxgear.com.ua</li>
                         </ul>
                     </div>
