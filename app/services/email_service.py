@@ -52,8 +52,6 @@ class EmailService:
             raw_payment = order_data.get('payment_method', 'cod')
             payment_text = "при отриманні" if raw_payment == 'cod' else "на картку"
 
-
-
             # order_rate = order_data.get('order_rate', 'фіксований')  # Беремо курс з фронта
 
             if not recipient_email:
@@ -124,7 +122,6 @@ class EmailService:
                         <ul style="list-style: none; padding: 0; font-size: 11px; color: #555;">
                             <li><strong>Телефон:</strong> +38 (097) 013-43-31</li>
                             <li><strong>Viber / Whatsapp:</strong> +38 (097) 013-43-31</li>
-                            <li><strong>Skype:</strong> s0634949207</li>
                             <li><strong>Email:</strong> contact@maxgear.com.ua</li>
                         </ul>
                     </div>
