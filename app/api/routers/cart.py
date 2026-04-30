@@ -194,10 +194,7 @@
 
 
 
-
-
-
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from sqlalchemy import text
 from app.database import engine, TABLE_CART, TABLE_CATALOG, TABLE_ORDERS, TABLE_ORDER_ITEMS, TABLE_PROFILES
 from app.services.email_service import EmailService
@@ -249,19 +246,19 @@ class CreateOrderSchema(BaseModel):
     items: list[OrderItemSchema]
 
 
-class OrderSchema(BaseModel):
-    order_id: str
-    full_user_name: str
-    first_name: str
-    last_name: str
-    user_email: str
-    user_phone: str
-    delivery_info: str
-    payment_method: str
-    total_price_eur: float
-    total_price_uah: int
-    notes: Optional[str] = ""
-    items: list[dict]
+# class OrderSchema(BaseModel):
+#     order_id: str
+#     full_user_name: str
+#     first_name: str
+#     last_name: str
+#     user_email: str
+#     user_phone: str
+#     delivery_info: str
+#     payment_method: str
+#     total_price_eur: float
+#     total_price_uah: int
+#     notes: Optional[str] = ""
+#     items: list[dict]
 
 
 # ───────────────────────────────────────────────
@@ -418,7 +415,7 @@ async def clear_cart(user_id: str):
 # ───────────────────────────────────────────────
 
 @router.post("/create-order")
-async def create_order(data: CreateOrderSchema):
+async def create_order(data: CreateOrderSchema, background_tasks: BackgroundTasks):
     try:
         with engine.connect() as conn:
 
@@ -524,7 +521,8 @@ async def create_order(data: CreateOrderSchema):
             "notes": data.notes,
             "items": [item.dict() for item in data.items],
         }
-        EmailService.send_order_confirmation(email_payload)
+        # Email у фоні через FastAPI BackgroundTasks — надійніше ніж asyncio.create_task
+        background_tasks.add_task(EmailService.send_order_confirmation, email_payload)
 
         return {
             "status": "success",
