@@ -293,6 +293,7 @@ class EmailService:
             params = {
                 "from": "MaxGear <onboarding@resend.dev>",  # домен має бути верифікований в Resend
                 "to": [SENDER_EMAIL],
+                # "to": [recipient_email],
                 # "bcc": [SENDER_EMAIL],  # копія собі
                 "subject": f"MaxGear | Замовлення №{order_id}",
                 "html": html_content,
