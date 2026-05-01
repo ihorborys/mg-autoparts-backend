@@ -291,7 +291,7 @@ class EmailService:
 
             # Відправляємо через Resend HTTPS API — не блокується на Render
             params = {
-                "from": "MaxGear <noreply@maxgear.com.ua>",  # домен має бути верифікований в Resend
+                "from": "MaxGear <orders.maxgear@gmail.com>",  # домен має бути верифікований в Resend
                 "to": [recipient_email],
                 "bcc": [SENDER_EMAIL],  # копія собі
                 "subject": f"MaxGear | Замовлення №{order_id}",
