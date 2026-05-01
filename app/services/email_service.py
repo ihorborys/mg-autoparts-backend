@@ -291,10 +291,10 @@ class EmailService:
 
             # Відправляємо через Resend HTTPS API — не блокується на Render
             params = {
-                "from": "MaxGear <onboarding@resend.dev>",  # домен має бути верифікований в Resend
-                # "to": [SENDER_EMAIL],
-                "to": [recipient_email],
-                "bcc": [SENDER_EMAIL],  # копія собі
+                "from": "MaxGear <onboarding@resend.dev>",  # домен має бути верифікований в Resend, тоді розкоментуємо
+                "to": [SENDER_EMAIL],
+                # "to": [recipient_email], # домен має бути верифікований в Resend, тоді розкоментуємо
+                # "bcc": [SENDER_EMAIL],  # копія собі. домен має бути верифікований в Resend, тоді розкоментуємо
                 "subject": f"MaxGear | Замовлення №{order_id}",
                 "html": html_content,
             }
