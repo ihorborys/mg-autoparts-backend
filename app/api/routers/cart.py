@@ -43,6 +43,7 @@ class CreateOrderSchema(BaseModel):
     ship_city: str
     ship_method: str
     ship_branch: str
+    ship_branch_full: Optional[str] = ""  # повна адреса відділення
     payment_method: str
     total_price_eur: float
     total_price_uah: int
@@ -306,9 +307,14 @@ async def create_order(data: CreateOrderSchema, background_tasks: BackgroundTask
             conn.commit()
 
         # КРОК 5: Відправляємо email (після commit — замовлення вже збережено)
+        # delivery_info = (
+        #     'Самовивіз (Самбір)' if data.ship_method == 'self'
+        #     else f'НП: {data.ship_city}, №{data.ship_branch}'
+        # )
+
         delivery_info = (
             'Самовивіз (Самбір)' if data.ship_method == 'self'
-            else f'НП: {data.ship_city}, №{data.ship_branch}'
+            else f'НП: {data.ship_city}, {data.ship_branch_full or f"№{data.ship_branch}"}'
         )
 
         email_payload = {
