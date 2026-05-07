@@ -5,11 +5,15 @@ from fastapi import APIRouter, HTTPException, Query
 router = APIRouter()
 
 NP_API_URL = "https://api.novaposhta.ua/v2.0/json/"
-NP_API_KEY = os.getenv("NOVA_POSHTA_API_KE")
+NP_API_KEY = os.getenv("NOVA_POSHTA_API_KEY")
 
 
 async def np_request(model: str, method: str, properties: dict) -> dict:
     """Базовий хелпер для запитів до НП API."""
+
+    # ТИМЧАСОВИЙ ДЕБАГ:
+    print(f"DEBUG: Відправляю запит з ключем: {NP_API_KEY}")
+
     payload = {
         "apiKey": NP_API_KEY,
         "modelName": model,
