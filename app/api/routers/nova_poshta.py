@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Query
 router = APIRouter()
 
 NP_API_URL = "https://api.novaposhta.ua/v2.0/json/"
-NP_API_KEY = os.getenv("NOVA_POSHTA_API_KEY")
+NP_API_KEY = os.getenv("NOVA_POSHTA_API_KE")
 
 
 async def np_request(model: str, method: str, properties: dict) -> dict:
