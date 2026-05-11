@@ -81,6 +81,7 @@ class EmailService:
 
                     <div style="background: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0;">
                         <p style="margin: 5px 0;">Отримувач: <strong>{full_user_name}</strong></p>
+                        <p style="margin: 5px 0;">Електронна пошта: <strong>{recipient_email}</strong></p>
                         <p style="margin: 5px 0;">Телефон: <strong>{user_phone}</strong></p>
                         <p style="margin: 5px 0;">Доставка: <strong>{delivery_info}</strong></p>
                         <p style="margin: 5px 0;">Оплата: <strong>{payment_text}</strong></p>
