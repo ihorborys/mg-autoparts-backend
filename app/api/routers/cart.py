@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from sqlalchemy import text
-from app.database import engine, TABLE_CART, TABLE_CATALOG, TABLE_ORDERS, TABLE_ORDER_ITEMS, TABLE_PROFILES
+from app.database import engine, TABLE_CART, TABLE_CATALOG, TABLE_ORDERS, TABLE_ORDER_ITEMS, TABLE_PROFILES, PRICE_MARKUP
 from app.services.email_service import EmailService
+from app.services.exchange import get_eur_to_uah
 from pydantic import BaseModel
 from typing import Optional
 
@@ -32,6 +33,16 @@ class OrderItemSchema(BaseModel):
     quantity: int
 
 
+class ValidateItem(BaseModel):
+    code: str
+    supplier_id: int
+    price_eur: float  # ціна яка зараз є в Redux у юзера
+
+
+class ValidatePricesSchema(BaseModel):
+    items: list[ValidateItem]
+
+
 class CreateOrderSchema(BaseModel):
     user_id: str
     first_name: str
@@ -47,7 +58,6 @@ class CreateOrderSchema(BaseModel):
     total_price_uah: int
     notes: Optional[str] = ""
     items: list[OrderItemSchema]
-    # Поля для збереження в профілі — щоб підтягувати при наступному замовленні
     city_ref: Optional[str] = ""
     warehouse_ref: Optional[str] = ""
     warehouse_query: Optional[str] = ""
@@ -192,7 +202,72 @@ async def clear_cart(user_id: str):
 
 
 # ───────────────────────────────────────────────
-# 6. СТВОРЕННЯ ЗАМОВЛЕННЯ
+# 6. ВАЛІДАЦІЯ ЦІН ПЕРЕД ЗАМОВЛЕННЯМ
+#
+# Фронт передає список товарів з поточними цінами з Redux.
+# Бекенд порівнює з актуальними цінами з таблиці products.
+# Якщо є різниця — повертає prices_changed: true і нові ціни.
+# Фронт оновлює Redux і просить юзера підтвердити ще раз.
+# ───────────────────────────────────────────────
+
+@router.post("/validate-prices")
+async def validate_prices(data: ValidatePricesSchema):
+    try:
+        # Отримуємо актуальний курс
+        rate = get_eur_to_uah()
+
+        result_items = []
+        prices_changed = False
+
+        with engine.connect() as conn:
+            for item in data.items:
+                row = conn.execute(text(f"""
+                    SELECT price_eur FROM {TABLE_CATALOG}
+                    WHERE code = :code AND supplier_id = :supplier_id
+                    LIMIT 1
+                """), {
+                    "code": item.code,
+                    "supplier_id": item.supplier_id,
+                }).fetchone()
+
+                if row is None:
+                    # Товар не знайдений в каталозі — залишаємо як є
+                    result_items.append({
+                        "code": item.code,
+                        "supplier_id": item.supplier_id,
+                        "price_eur": item.price_eur,
+                        "price_uah": round(float(item.price_eur) * rate),
+                        "changed": False,
+                    })
+                    continue
+
+                actual_price = round(float(row.price_eur) * PRICE_MARKUP, 2)
+                # Порівнюємо з точністю до 4 знаків після коми
+                changed = round(actual_price, 4) != round(item.price_eur, 4)
+                if changed:
+                    prices_changed = True
+
+                result_items.append({
+                    "code": item.code,
+                    "supplier_id": item.supplier_id,
+                    "price_eur": actual_price,
+                    "price_uah": round(float(actual_price) * rate),
+                    "changed": changed,
+                })
+
+        return {
+            "prices_changed": prices_changed,
+            "rate": rate,
+            "items": result_items,
+        }
+
+    except Exception as e:
+        print(f"[VALIDATE PRICES ERROR]: {e}")
+        raise HTTPException(status_code=500, detail="Помилка валідації цін")
+
+
+# ───────────────────────────────────────────────
+# 7. СТВОРЕННЯ ЗАМОВЛЕННЯ
 # ───────────────────────────────────────────────
 
 @router.post("/create-order")
@@ -250,20 +325,18 @@ async def create_order(data: CreateOrderSchema, background_tasks: BackgroundTask
                     "quantity": item.quantity,
                 })
 
-            # КРОК 3: Оновлюємо профіль юзера
-            # Зберігаємо city_ref, warehouse_ref, warehouse_query —
-            # щоб при наступному замовленні автоматично підтягнути останнє відділення
+            # КРОК 3: Оновлюємо профіль
             conn.execute(text(f"""
                 INSERT INTO {TABLE_PROFILES} (
                     id, first_name, last_name, phone,
                     city, city_ref, delivery_method,
-                    branch, warehouse_ref, warehouse_query, payment_method,
-                    updated_at
+                    branch, warehouse_ref, warehouse_query,
+                    payment_method, updated_at
                 ) VALUES (
                     :id, :first_name, :last_name, :phone,
                     :city, :city_ref, :method,
-                    :branch, :warehouse_ref, :warehouse_query, :payment_method,
-                    NOW()
+                    :branch, :warehouse_ref, :warehouse_query,
+                    :payment_method, NOW()
                 )
                 ON CONFLICT (id) DO UPDATE SET
                     first_name = EXCLUDED.first_name,
@@ -299,6 +372,7 @@ async def create_order(data: CreateOrderSchema, background_tasks: BackgroundTask
             conn.commit()
 
         # КРОК 5: Email у фоні
+        rate = get_eur_to_uah()
         delivery_info = (
             'Самовивіз (Самбір)' if data.ship_method == 'self'
             else f'НП: {data.ship_city}, {data.ship_branch_full or data.ship_branch}'
@@ -316,8 +390,13 @@ async def create_order(data: CreateOrderSchema, background_tasks: BackgroundTask
             "total_price_eur": data.total_price_eur,
             "total_price_uah": data.total_price_uah,
             "notes": data.notes,
-            "items": [item.dict() for item in data.items],
+            # Розраховуємо price_uah для кожного товару по актуальному курсу
+            "items": [
+                {**item.dict(), "price_uah": round(item.price_eur * rate)}
+                for item in data.items
+            ],
         }
+
         background_tasks.add_task(EmailService.send_order_confirmation, email_payload)
 
         return {

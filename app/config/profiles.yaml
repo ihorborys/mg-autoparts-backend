@@ -69,12 +69,13 @@ profiles:
       - { from: stock,  header: "stock" }
       - { from: price,  header: "price_uah" }
 
-  # ----------------- 5. SITE 1.33 (EUR, CSV) -----------------
-  - name: site_1_33_csv
-    factor: 1.33
+
+  # ----------------- 5. SITE NETTO (EUR, CSV) -----------------
+  - name: site_netto_csv
+    factor: 1.00
     currency_out: EUR
     format: csv
-    r2_prefix: "1_33/site/{supplier}/"
+    r2_prefix: "netto/site/{supplier}/"
     csv:
       delimiter: ";"
       header: true
@@ -86,3 +87,22 @@ profiles:
       - { from: name,        header: "name" }
       - { from: stock,       header: "stock" }
       - { from: price,       header: "price_eur" }
+
+
+#  # ----------------- 5. SITE 1.33 (EUR, CSV) -----------------
+#  - name: site_1_33_csv
+#    factor: 1.33
+#    currency_out: EUR
+#    format: csv
+#    r2_prefix: "1_33/site/{supplier}/"
+#    csv:
+#      delimiter: ";"
+#      header: true
+#    columns:
+#      - { from: supplier_id, header: "supplier_id" }
+#      - { from: code,        header: "code" }
+#      - { from: unicode,     header: "unicode" }
+#      - { from: brand,       header: "brand" }
+#      - { from: name,        header: "name" }
+#      - { from: stock,       header: "stock" }
+#      - { from: price,       header: "price_eur" }
