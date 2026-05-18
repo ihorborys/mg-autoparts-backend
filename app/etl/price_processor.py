@@ -526,12 +526,12 @@ def process_one_price(
 
     if "exist" in prefix_lower:
         tag = "exist"
-    elif "1_23" in prefix_lower:
+    elif "1_29" in prefix_lower:
         tag = "m"
-    elif "1_27" in prefix_lower:
+    elif "1_33" in prefix_lower:
         tag = "l"
-    elif "site" in prefix_lower or "1_33" in prefix_lower:
-        tag = "xl"
+    elif "site" in prefix_lower:
+        tag = "site"
     else:
         tag = "data"  # Технічний тег, якщо нічого не підійшло
 

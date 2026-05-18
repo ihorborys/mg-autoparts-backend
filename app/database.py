@@ -40,7 +40,7 @@ TABLE_PROFILES = os.getenv("DB_TABLE_PROFILES", "profiles")
 # ------------------------------------
 
 # --- НАЦІНКА ---
-PRICE_MARKUP = float(os.getenv("PRICE_MARKUP", "1.27"))
+PRICE_MARKUP = float(os.getenv("PRICE_MARKUP", "1.33"))
 
 
 # # 4. Функція створення таблиць (щоб не робити руками в Supabase)
